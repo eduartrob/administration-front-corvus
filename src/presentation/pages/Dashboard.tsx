@@ -3,10 +3,24 @@ import { motion } from 'framer-motion';
 import { Users, GraduationCap, AlertCircle, ArrowRight } from 'lucide-react';
 import axios from 'axios';
 import { API_CONFIG } from '../../application/config/api_config';
+import { Link } from 'react-router-dom';
+
+function formatRelativeTime(dateString: string) {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+  
+  if (diffInSeconds < 60) return `Hace unos segundos`;
+  if (diffInSeconds < 3600) return `Hace ${Math.floor(diffInSeconds / 60)} min`;
+  if (diffInSeconds < 86400) return `Hace ${Math.floor(diffInSeconds / 3600)} horas`;
+  return `Hace ${Math.floor(diffInSeconds / 86400)} días`;
+}
 
 export default function Dashboard() {
   const [stats, setStats] = useState({ students: 0, teachers: 0 });
+  const [activities, setActivities] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingActivities, setIsLoadingActivities] = useState(true);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -26,7 +40,59 @@ export default function Dashboard() {
       }
     };
 
+    const fetchActivities = async () => {
+      try {
+        const res = await axios.get(`${API_CONFIG.BASE_URL}/auth/admin/activity?limit=5`);
+        if (res.data && res.data.success) {
+          const mapped = res.data.items.map((log: any) => {
+             let actionText = '';
+             let tag = '';
+             let tagClass = '';
+             let isAlert = false;
+             
+             if (log.action === 'LOGIN') {
+                actionText = 'inició sesión en la plataforma';
+                tag = 'Sistema';
+                tagClass = 'bg-surface-variant text-on-surface-variant';
+             } else if (log.action === 'UPLOAD_DOCUMENT') {
+                actionText = 'subió un documento';
+                tag = 'Documento';
+                tagClass = 'bg-primary-container/20 text-primary';
+             } else if (log.action === 'SYSTEM_ALERT') {
+                actionText = 'detectó una alerta de similitud alta';
+                tag = 'Automático';
+                tagClass = 'bg-error-container text-error';
+                isAlert = true;
+             } else {
+                actionText = 'realizó una acción';
+                tag = 'General';
+                tagClass = 'bg-surface-variant text-on-surface-variant';
+             }
+             
+             return {
+                id: log.id,
+                user: log.user?.full_name || 'Usuario desconocido',
+                role: log.user?.role?.name?.toLowerCase() || '',
+                action: actionText,
+                detail: log.detail,
+                time: formatRelativeTime(log.createdAt),
+                tag,
+                tagClass,
+                avatar: log.user?.profile_picture || `https://ui-avatars.com/api/?name=${log.user?.full_name || 'U'}&background=random`,
+                isAlert: isAlert || log.action === 'SYSTEM_ALERT'
+             };
+          });
+          setActivities(mapped);
+        }
+      } catch (error) {
+        console.error('Error fetching activities:', error);
+      } finally {
+        setIsLoadingActivities(false);
+      }
+    };
+
     fetchStats();
+    fetchActivities();
   }, []);
   return (
     <motion.div
@@ -100,69 +166,32 @@ export default function Dashboard() {
       {}
       <div className="mb-6 flex justify-between items-end">
         <h3 className="text-title-lg font-semibold text-on-surface">Historial de Acciones Recientes</h3>
-        <button className="text-primary font-label-md hover:underline flex items-center gap-1">
+        <Link to="/actividad" className="text-primary font-label-md hover:underline flex items-center gap-1">
           Ver todo el historial <ArrowRight className="w-4 h-4" />
-        </button>
+        </Link>
       </div>
 
       <div className="glass-panel rounded-2xl overflow-hidden">
-        <div className="divide-y divide-outline-variant/50">
-          {[
-            {
-              id: 1,
-              user: 'Juan Pérez',
-              role: 'alumno',
-              action: 'subió su Tesis',
-              detail: 'Proyecto: Análisis Predictivo Avanzado',
-              time: 'Hace 5 min',
-              tag: 'Documento',
-              tagClass: 'bg-primary-container/20 text-primary',
-              avatar: 'https://i.pravatar.cc/150?u=1'
-            },
-            {
-              id: 2,
-              user: 'Carlos',
-              role: 'Profesor',
-              action: 'inició sesión en la plataforma',
-              detail: 'Acceso desde IP institucional',
-              time: 'Hace 15 min',
-              tag: 'Sistema',
-              tagClass: 'bg-surface-variant text-on-surface-variant',
-              avatar: 'https://i.pravatar.cc/150?u=2'
-            },
-            {
-              id: 3,
-              user: 'María G.',
-              role: 'coordinadora',
-              action: 'validó el cluster de proyectos',
-              detail: 'Materia: Ingeniería de Datos',
-              time: 'Hace 1 hora',
-              tag: 'Validación',
-              tagClass: 'bg-secondary-container/20 text-secondary',
-              avatar: 'https://i.pravatar.cc/150?u=3'
-            },
-            {
-              id: 4,
-              user: 'El sistema',
-              role: '',
-              action: 'detectó una alerta de similitud alta',
-              detail: 'Proyecto ID: #8821 - Requiere revisión manual',
-              time: 'Hace 2 horas',
-              tag: 'Automático',
-              tagClass: 'bg-error-container text-error',
-              avatar: '',
-              isAlert: true
-            }
-          ].map((item) => (
-            <div key={item.id} className="p-4 sm:p-5 flex items-center gap-4 hover:bg-surface-container-low/50 transition-colors">
-              <div className="flex-shrink-0 w-12 h-12 rounded-full overflow-hidden bg-surface-container-highest border border-outline-variant flex items-center justify-center">
-                {item.isAlert ? (
-                  <AlertCircle className="w-6 h-6 text-error" />
-                ) : (
-                  <img src={item.avatar} alt={item.user} className="w-full h-full object-cover" />
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
+        {isLoadingActivities ? (
+          <div className="p-8 text-center text-on-surface-variant animate-pulse">
+            Cargando historial...
+          </div>
+        ) : activities.length === 0 ? (
+          <div className="p-8 text-center text-on-surface-variant">
+            No hay acciones recientes registradas.
+          </div>
+        ) : (
+          <div className="divide-y divide-outline-variant/50">
+            {activities.map((item) => (
+              <div key={item.id} className="p-4 sm:p-5 flex items-center gap-4 hover:bg-surface-container-low/50 transition-colors">
+                <div className="flex-shrink-0 w-12 h-12 rounded-full overflow-hidden bg-surface-container-highest border border-outline-variant flex items-center justify-center">
+                  {item.isAlert ? (
+                    <AlertCircle className="w-6 h-6 text-error" />
+                  ) : (
+                    <img src={item.avatar} alt={item.user} className="w-full h-full object-cover" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
                 <p className="text-body-md text-on-surface truncate">
                   {item.role ? `El ${item.role} ` : ''}
                   <span className="font-semibold">{item.user}</span> {item.action}.
@@ -176,8 +205,9 @@ export default function Dashboard() {
                 </span>
               </div>
             </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </motion.div>
   );

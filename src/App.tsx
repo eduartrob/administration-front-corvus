@@ -10,6 +10,7 @@ import ValidacionTareas from './presentation/pages/ValidacionTareas';
 import Materias from './presentation/pages/Materias';
 import ProjectsList from './presentation/pages/ProjectsList';
 import InferenceHistory from './presentation/pages/InferenceHistory';
+import ActivityHistory from './presentation/pages/ActivityHistory';
 
 // -# helper for redirecting authenticated users away from public routes like login
 function PublicRoute({ children }: { children: React.ReactNode }) {
@@ -32,6 +33,7 @@ function AppRoutes() {
           <Route path="/tareas" element={<ValidacionTareas />} />
           <Route path="/materias" element={<Materias />} />
           <Route path="/inferencias" element={<InferenceHistory />} />
+          <Route path="/actividad" element={<ActivityHistory />} />
         </Route>
       </Route>
       
