@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Save, FileText, Settings, Sliders } from 'lucide-react';
+import { X, Save, FileText, Settings, Sliders, CheckCircle } from 'lucide-react';
 import axios from 'axios';
 import { API_CONFIG } from '../../../application/config/api_config';
 
@@ -173,17 +173,31 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                       <div className="flex gap-4">
                         <button
                           onClick={() => setLlmProvider('groq')}
-                          className={`flex-1 p-4 rounded-xl border transition-all ${llmProvider === 'groq' ? 'bg-primary-container border-primary text-primary-dark' : 'bg-surface-container-low border-outline-variant/50 text-on-surface hover:bg-surface-container'}`}
+                          className={`relative flex-1 p-5 rounded-2xl border-2 transition-all overflow-hidden ${llmProvider === 'groq' ? 'bg-primary/10 border-primary shadow-sm' : 'bg-surface-container-low border-outline-variant/50 hover:bg-surface-container hover:border-outline-variant'}`}
                         >
-                          <h5 className="font-bold mb-1">GroqCloud (Alta Velocidad)</h5>
-                          <p className="text-xs opacity-80">Llama-3.3-70B vía LPU (Nube segura)</p>
+                          {llmProvider === 'groq' && (
+                            <div className="absolute top-3 right-3 text-primary animate-in fade-in zoom-in duration-200">
+                              <CheckCircle className="w-5 h-5 fill-primary text-white" />
+                            </div>
+                          )}
+                          <div className={`text-left ${llmProvider === 'groq' ? 'text-primary font-bold' : 'text-on-surface'}`}>
+                            <h5 className="font-bold mb-1 text-lg">GroqCloud (Alta Velocidad)</h5>
+                            <p className="text-sm opacity-80 font-normal">Llama-3.3-70B vía LPU (Nube segura)</p>
+                          </div>
                         </button>
                         <button
                           onClick={() => setLlmProvider('ollama')}
-                          className={`flex-1 p-4 rounded-xl border transition-all ${llmProvider === 'ollama' ? 'bg-primary-container border-primary text-primary-dark' : 'bg-surface-container-low border-outline-variant/50 text-on-surface hover:bg-surface-container'}`}
+                          className={`relative flex-1 p-5 rounded-2xl border-2 transition-all overflow-hidden ${llmProvider === 'ollama' ? 'bg-primary/10 border-primary shadow-sm' : 'bg-surface-container-low border-outline-variant/50 hover:bg-surface-container hover:border-outline-variant'}`}
                         >
-                          <h5 className="font-bold mb-1">Ollama (Offline/Local)</h5>
-                          <p className="text-xs opacity-80">Llama-3.2-3B (Máxima Privacidad)</p>
+                          {llmProvider === 'ollama' && (
+                            <div className="absolute top-3 right-3 text-primary animate-in fade-in zoom-in duration-200">
+                              <CheckCircle className="w-5 h-5 fill-primary text-white" />
+                            </div>
+                          )}
+                          <div className={`text-left ${llmProvider === 'ollama' ? 'text-primary font-bold' : 'text-on-surface'}`}>
+                            <h5 className="font-bold mb-1 text-lg">Ollama (Offline/Local)</h5>
+                            <p className="text-sm opacity-80 font-normal">Llama-3.2-3B (Máxima Privacidad)</p>
+                          </div>
                         </button>
                       </div>
 
