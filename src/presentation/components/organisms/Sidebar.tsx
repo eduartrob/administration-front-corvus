@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { LayoutDashboard, Network, BookOpen, CheckSquare, LogOut, Sun, Moon, Settings } from 'lucide-react';
+import { LayoutDashboard, Network, BookOpen, CheckSquare, LogOut, Sun, Moon, Settings, ClipboardList } from 'lucide-react';
 import { useAuth } from '../../../application/contexts/AuthContext';
 import { useTheme } from '../../../application/contexts/ThemeContext';
 import { CorvusLogo } from '../atoms/CorvusLogo';
@@ -8,6 +8,7 @@ import { CorvusLogo } from '../atoms/CorvusLogo';
 const menuItems = [
   { path: '/', label: 'Dashboard Principal', icon: LayoutDashboard },
   { path: '/clustering', label: 'Clustering de Proyectos', icon: Network },
+  { path: '/inferencias', label: 'Historial de Inferencias', icon: ClipboardList },
   { path: '/materias', label: 'Gestión de Materias', icon: BookOpen },
   { path: '/tareas', label: 'Validación de Tareas', icon: CheckSquare },
 ];

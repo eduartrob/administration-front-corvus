@@ -9,6 +9,7 @@ import Clustering from './presentation/pages/Clustering';
 import ValidacionTareas from './presentation/pages/ValidacionTareas';
 import Materias from './presentation/pages/Materias';
 import ProjectsList from './presentation/pages/ProjectsList';
+import InferenceHistory from './presentation/pages/InferenceHistory';
 
 // Helper for redirecting authenticated users away from public routes like /login
 function PublicRoute({ children }: { children: React.ReactNode }) {
@@ -30,6 +31,7 @@ function AppRoutes() {
           <Route path="/proyectos" element={<ProjectsList />} />
           <Route path="/tareas" element={<ValidacionTareas />} />
           <Route path="/materias" element={<Materias />} />
+          <Route path="/inferencias" element={<InferenceHistory />} />
         </Route>
       </Route>
       
