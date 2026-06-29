@@ -11,7 +11,7 @@ import Materias from './presentation/pages/Materias';
 import ProjectsList from './presentation/pages/ProjectsList';
 import InferenceHistory from './presentation/pages/InferenceHistory';
 
-// Helper for redirecting authenticated users away from public routes like /login
+// -# helper for redirecting authenticated users away from public routes like login
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isInitializing } = useAuth();
   if (isInitializing) return null;

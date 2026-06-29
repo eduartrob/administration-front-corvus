@@ -32,7 +32,6 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       }
     } catch (error) {
       console.error('Error fetching config', error);
-      // Fallback a los valores por defecto si falla la red
       setAllowedExtensions(['.pdf', '.md', '.txt']);
     } finally {
       setIsLoading(false);
@@ -79,7 +78,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           </div>
         </div>
         
-        {/* Toggle Switch */}
+        {}
         <button 
           onClick={() => toggleExtension(ext)}
           className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${isChecked ? 'bg-primary' : 'bg-surface-variant'}`}
@@ -110,7 +109,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             className="relative w-full max-w-4xl h-[80vh] flex bg-surface rounded-2xl shadow-2xl overflow-hidden z-10"
           >
-            {/* Sidebar Modal */}
+            {}
             <div className="w-64 bg-surface-container-lowest border-r border-outline-variant/50 flex flex-col p-4">
               <h2 className="text-label-lg font-bold text-on-surface-variant uppercase tracking-wider mb-4 px-3">
                 Ajustes
@@ -134,7 +133,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               </nav>
             </div>
 
-            {/* Content Modal */}
+            {}
             <div className="flex-1 flex flex-col bg-surface relative">
               <div className="absolute top-4 right-4 z-20">
                 <button 

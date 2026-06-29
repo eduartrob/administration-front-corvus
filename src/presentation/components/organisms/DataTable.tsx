@@ -33,14 +33,14 @@ export function DataTable<T>({
 }: DataTableProps<T>) {
   return (
     <Card className="!p-0 flex flex-col flex-1 overflow-hidden">
-      {/* Toolbar */}
+      {}
       {toolbar && (
         <div className="p-4 sm:p-6 border-b border-outline-variant/50 bg-surface-container-low/30">
           {toolbar}
         </div>
       )}
 
-      {/* Table */}
+      {}
       <div className="flex-1 overflow-auto">
         <table className="w-full text-left border-collapse min-w-[800px]">
           <thead className="sticky top-0 bg-surface-container-lowest shadow-[0_1px_0_0_var(--color-outline-variant)]">
@@ -74,7 +74,7 @@ export function DataTable<T>({
         </table>
       </div>
 
-      {/* Footer Pagination */}
+      {}
       {(paginationInfo || onPrevPage || onNextPage) && (
         <div className="p-4 border-t border-outline-variant/50 flex justify-between items-center bg-surface-container-lowest">
           <p className="text-body-md text-on-surface-variant">{paginationInfo}</p>

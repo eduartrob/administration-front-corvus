@@ -20,7 +20,6 @@ export default function Dashboard() {
         }
       } catch (error) {
         console.error('Error fetching dashboard stats:', error);
-        // Fallbacks for UI if backend is not fully reachable yet
         setStats({ students: 0, teachers: 0 });
       } finally {
         setIsLoading(false);
@@ -40,7 +39,7 @@ export default function Dashboard() {
         <p className="text-body-md text-on-surface-variant mt-2">Métricas de rendimiento institucional y actividad reciente en la plataforma de innovación académica.</p>
       </div>
 
-      {/* Stats Cards */}
+      {}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
         <div className="glass-panel p-6 rounded-2xl flex flex-col justify-between">
           <div className="flex justify-between items-start mb-4">
@@ -98,7 +97,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Recent Activity */}
+      {}
       <div className="mb-6 flex justify-between items-end">
         <h3 className="text-title-lg font-semibold text-on-surface">Historial de Acciones Recientes</h3>
         <button className="text-primary font-label-md hover:underline flex items-center gap-1">

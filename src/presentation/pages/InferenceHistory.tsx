@@ -72,7 +72,7 @@ export default function InferenceHistory() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
     >
-      {/* Header */}
+      {}
       <div className="mb-8 flex items-start justify-between">
         <div>
           <h1 className="text-headline-lg font-bold text-on-surface flex items-center gap-3">
@@ -93,7 +93,7 @@ export default function InferenceHistory() {
         </button>
       </div>
 
-      {/* Stats row */}
+      {}
       {data && (
         <div className="grid grid-cols-3 gap-4 mb-8">
           <div className="glass-panel p-5 rounded-2xl">
@@ -114,7 +114,7 @@ export default function InferenceHistory() {
         </div>
       )}
 
-      {/* Table */}
+      {}
       <div className="glass-panel rounded-2xl overflow-hidden">
         {error && (
           <div className="p-8 text-center text-on-surface-variant">
@@ -210,7 +210,7 @@ export default function InferenceHistory() {
           </div>
         )}
 
-        {/* Pagination */}
+        {}
         {data && data.total > LIMIT && (
           <div className="flex items-center justify-between px-5 py-4 border-t border-outline-variant/50">
             <p className="text-label-sm text-on-surface-variant">

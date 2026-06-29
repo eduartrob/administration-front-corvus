@@ -37,7 +37,7 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-background">
-      {/* Left side - Decorative */}
+      {}
       <div className="hidden md:flex md:w-1/2 bg-primary items-center justify-center p-12 relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(#ffffff33_1px,transparent_1px)] [background-size:24px_24px] opacity-20"></div>
         <motion.div 
@@ -55,12 +55,12 @@ export default function Login() {
           </p>
         </motion.div>
         
-        {/* Abstract shapes */}
+        {}
         <div className="absolute -bottom-32 -left-32 w-96 h-96 bg-primary-fixed/20 rounded-full blur-3xl"></div>
         <div className="absolute top-20 right-20 w-64 h-64 bg-secondary-container/20 rounded-full blur-3xl"></div>
       </div>
 
-      {/* Right side - Login Form */}
+      {}
       <div className="flex-1 flex items-center justify-center p-6 sm:p-12">
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}

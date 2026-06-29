@@ -5,7 +5,7 @@ import { Play, Database, FileClock, Compass } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ScatterChart, Scatter, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, BarChart, Bar, CartesianGrid } from 'recharts';
 import { API_CONFIG } from '../../application/config/api_config';
-// El scatterData inicializa vacío ya que debe venir del backend
+// -# el scatterdata inicializa vacio ya que debe venir del backend
 const CLUSTER_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
 
 const CustomScatterShape = (props: any) => {
@@ -14,7 +14,6 @@ const CustomScatterShape = (props: any) => {
   const size = isBlueOcean ? 16 : 14;
 
   if (isBlueOcean) {
-    // Dibujar Estrella para Océanos Azules
     return (
       <g>
         <path
@@ -30,7 +29,6 @@ const CustomScatterShape = (props: any) => {
     );
   }
 
-  // Dibujar Círculos para Clústeres
   return (
     <g>
       <circle cx={cx} cy={cy} r={size} fill={fill} stroke="#ffffff" strokeWidth={1.5} opacity={0.9} />
@@ -40,8 +38,6 @@ const CustomScatterShape = (props: any) => {
     </g>
   );
 };
-
-
 
 export default function Clustering() {
   const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d');
@@ -56,7 +52,6 @@ export default function Clustering() {
 
   useEffect(() => {
     const fetchClusteringData = async () => {
-      // 1. Fetch Project Count
       try {
         const countRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/projects-count`);
         if (countRes.data && countRes.data.count !== undefined) {
@@ -66,10 +61,7 @@ export default function Clustering() {
         console.error('Error fetching project count:', error);
       }
 
-      // 2. Ya no usamos pending-projects-count porque el backend lo tiene harcodeado a 0
-      // Calcularemos los pendientes basados en los vectorizados vs los agrupados
       
-      // 3. Fetch Recent Projects para la tabla
       try {
         const recentRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/recent-projects?limit=5`);
         if (Array.isArray(recentRes.data)) {
@@ -79,7 +71,6 @@ export default function Clustering() {
         console.error('Error fetching recent projects:', error);
       }
       
-      // 4. Fetch Cluster Stats
       try {
         const statsRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/clusters-stats`);
         if (statsRes.data && statsRes.data.clusters_detail) {
@@ -107,7 +98,6 @@ export default function Clustering() {
         console.error('Error fetching cluster stats:', error);
       }
 
-      // 5. Fetch 2D Scatter Data
       try {
         const scatterRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/clusters-2d`);
         if (Array.isArray(scatterRes.data)) {
@@ -117,7 +107,6 @@ export default function Clustering() {
         console.error('Error fetching scatter data:', error);
       }
 
-      // 6. Fetch 3D HTML
       try {
         const htmlRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/clusters-3d`);
         if (typeof htmlRes.data === 'string') {
@@ -128,12 +117,11 @@ export default function Clustering() {
       }
     };
 
-    fetchClusteringData(); // Carga inicial
+    fetchClusteringData();
 
-    // Configurar polling cada 10 segundos para dar la sensación de "tiempo real"
+    // -# configurar polling cada 10 segundos para dar la sensacion de tiempo real
     const intervalId = setInterval(fetchClusteringData, 10000);
 
-    // Limpieza del intervalo cuando el usuario sale de esta vista
     return () => clearInterval(intervalId);
   }, []);
 
@@ -189,7 +177,7 @@ export default function Clustering() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        {/* Left Column - Stats */}
+        {}
         <div className="flex flex-col gap-6">
           <div className="glass-panel p-6 rounded-2xl flex items-center justify-between">
             <div>
@@ -223,7 +211,7 @@ export default function Clustering() {
             <p className="text-[12px] font-medium text-on-surface-variant text-right">{pendingPercentage.toFixed(1)}% del lote actual</p>
           </div>
 
-          {/* Tarjeta de Océanos Azules */}
+          {}
           <div className="glass-panel p-6 rounded-2xl flex flex-col justify-between border border-error-container/30 bg-error-container/5 hover:bg-error-container/10 transition-colors">
             <div className="flex justify-between items-start mb-4">
               <div className="p-3 bg-error-container text-error rounded-xl shadow-sm">
@@ -243,7 +231,7 @@ export default function Clustering() {
           </div>
         </div>
 
-        {/* Right Column - Chart Area */}
+        {}
         <div className="lg:col-span-2 glass-panel p-6 rounded-2xl flex flex-col">
           <div className="flex justify-between items-start mb-6">
             <div>
@@ -251,7 +239,7 @@ export default function Clustering() {
               <p className="text-body-md text-on-surface-variant">Distribución de proyectos académicos basada en similitud vectorial.</p>
             </div>
             
-            {/* View Toggle */}
+            {}
             <div className="flex bg-surface-container-low p-1 rounded-xl border border-outline-variant/50">
               <button 
                 onClick={() => setViewMode('2d')}
@@ -318,7 +306,7 @@ export default function Clustering() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Bar Chart */}
+        {}
         <div className="glass-panel p-6 rounded-2xl">
           <h3 className="text-title-lg font-bold text-on-surface mb-1">Proyectos por Categoría</h3>
           <p className="text-body-md text-on-surface-variant mb-6">Volumen de trabajos clasificados automáticamente.</p>
@@ -339,7 +327,7 @@ export default function Clustering() {
           </div>
         </div>
 
-        {/* Recent Projects Table */}
+        {}
         <div className="glass-panel p-6 rounded-2xl flex flex-col">
           <div className="flex justify-between items-center mb-6">
             <div>

@@ -45,7 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string, rememberMe: boolean) => {
     setIsLoading(true);
     try {
-      // Llamada real al backend para obtener el JWT
+      // -# llamada real al backend para obtener el jwt
       const response = await axios.post(`${API_CONFIG.BASE_URL}/auth/login`, { 
         email, 
         password 
@@ -55,7 +55,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       setUser(user);
       
-      // Configurar el token globalmente para todas las siguientes peticiones Axios
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       
       const sessionData = JSON.stringify({ user, token });

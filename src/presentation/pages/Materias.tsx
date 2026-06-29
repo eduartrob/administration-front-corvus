@@ -15,7 +15,7 @@ export default function Materias() {
       </div>
 
       <div className="glass-panel rounded-2xl flex flex-col flex-1 overflow-hidden">
-        {/* Toolbar */}
+        {}
         <div className="p-4 sm:p-6 border-b border-outline-variant/50 flex flex-wrap gap-4 justify-between items-center bg-surface-container-low/30">
           <div className="flex flex-wrap gap-3">
             <button className="flex items-center gap-2 bg-surface-container-lowest border border-outline-variant px-4 py-2.5 rounded-xl text-on-surface font-label-md hover:bg-surface-container-low transition-colors shadow-sm">
@@ -27,7 +27,7 @@ export default function Materias() {
           </button>
         </div>
 
-        {/* Table */}
+        {}
         <div className="flex-1 overflow-auto">
           <table className="w-full text-left border-collapse min-w-[800px]">
             <thead className="sticky top-0 bg-surface-container-lowest shadow-[0_1px_0_0_var(--color-outline-variant)]">
@@ -88,7 +88,7 @@ export default function Materias() {
           </table>
         </div>
 
-        {/* Footer Pagination */}
+        {}
         <div className="p-4 border-t border-outline-variant/50 flex justify-between items-center bg-surface-container-lowest">
           <p className="text-body-md text-on-surface-variant">Mostrando 1 a 3 de 45 resultados</p>
           <div className="flex gap-2">

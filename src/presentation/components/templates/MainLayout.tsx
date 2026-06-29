@@ -11,7 +11,7 @@ export function MainLayout() {
     <div className="flex min-h-screen bg-background">
       <Sidebar onOpenSettings={() => setIsSettingsOpen(true)} />
       <div className="flex-1 flex flex-col">
-        {/* Topbar */}
+        {}
         <header className="h-20 bg-surface border-b border-outline-variant flex items-center justify-between px-8 sticky top-0 z-10">
           <div className="flex-1 max-w-2xl">
             <div className="relative">
@@ -39,13 +39,13 @@ export function MainLayout() {
           </div>
         </header>
         
-        {/* Main Content Area */}
+        {}
         <main className="flex-1 p-8 overflow-auto">
           <Outlet />
         </main>
       </div>
       
-      {/* Settings Modal */}
+      {}
       <SettingsModal 
         isOpen={isSettingsOpen} 
         onClose={() => setIsSettingsOpen(false)} 

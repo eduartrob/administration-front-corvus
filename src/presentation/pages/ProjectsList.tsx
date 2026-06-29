@@ -22,7 +22,7 @@ export default function ProjectsList() {
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        // Pedimos todos los proyectos sin límite
+        // -# pedimos todos los proyectos sin limite
         const res = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/recent-projects`);
         if (Array.isArray(res.data)) {
           setProjects(res.data);
