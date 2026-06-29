@@ -12,6 +12,7 @@ interface SettingsModalProps {
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<'engine' | 'appearance'>('engine');
   const [allowedExtensions, setAllowedExtensions] = useState<string[]>([]);
+  const [llmProvider, setLlmProvider] = useState<'ollama' | 'groq'>('ollama');
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<{text: string, type: 'success' | 'error'} | null>(null);
@@ -27,12 +28,14 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     setIsLoading(true);
     try {
       const res = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/config`);
-      if (res.data && res.data.allowed_extensions) {
-        setAllowedExtensions(res.data.allowed_extensions);
+      if (res.data) {
+        if (res.data.allowed_extensions) setAllowedExtensions(res.data.allowed_extensions);
+        if (res.data.llm_provider) setLlmProvider(res.data.llm_provider);
       }
     } catch (error) {
       console.error('Error fetching config', error);
       setAllowedExtensions(['.pdf', '.md', '.txt']);
+      setLlmProvider('ollama');
     } finally {
       setIsLoading(false);
     }
@@ -43,7 +46,8 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     setMessage(null);
     try {
       await axios.post(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/config`, {
-        allowed_extensions: allowedExtensions
+        allowed_extensions: allowedExtensions,
+        llm_provider: llmProvider
       });
       setMessage({ text: 'Configuración actualizada con éxito.', type: 'success' });
       setTimeout(() => setMessage(null), 3000);
@@ -158,10 +162,31 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     </div>
                   ) : (
                     <div className="space-y-4">
+                      <h4 className="text-body-lg font-bold text-on-surface mt-6 mb-2">Extensiones de Archivo</h4>
                       <ExtensionToggle ext=".pdf" label="Documentos PDF" desc="Artículos científicos, tesis y libros." />
                       <ExtensionToggle ext=".md" label="Archivos Markdown" desc="Documentación técnica y notas." />
                       <ExtensionToggle ext=".txt" label="Texto Plano" desc="Transcripts o apuntes básicos sin formato." />
                       
+                      <h4 className="text-body-lg font-bold text-on-surface mt-8 mb-2 border-t border-outline-variant/50 pt-6">Proveedor de Inteligencia Artificial</h4>
+                      <p className="text-body-sm text-on-surface-variant mb-4">Selecciona el motor principal de IA. Groq ofrece inferencia ultra-rápida (&#60;3s), mientras Ollama garantiza 100% privacidad ejecutándose localmente (&#126;40s). Si Groq falla, el sistema usará Ollama automáticamente como respaldo (Failover).</p>
+                      
+                      <div className="flex gap-4">
+                        <button
+                          onClick={() => setLlmProvider('groq')}
+                          className={`flex-1 p-4 rounded-xl border transition-all ${llmProvider === 'groq' ? 'bg-primary-container border-primary text-primary-dark' : 'bg-surface-container-low border-outline-variant/50 text-on-surface hover:bg-surface-container'}`}
+                        >
+                          <h5 className="font-bold mb-1">GroqCloud (Alta Velocidad)</h5>
+                          <p className="text-xs opacity-80">Llama-3.3-70B vía LPU (Nube segura)</p>
+                        </button>
+                        <button
+                          onClick={() => setLlmProvider('ollama')}
+                          className={`flex-1 p-4 rounded-xl border transition-all ${llmProvider === 'ollama' ? 'bg-primary-container border-primary text-primary-dark' : 'bg-surface-container-low border-outline-variant/50 text-on-surface hover:bg-surface-container'}`}
+                        >
+                          <h5 className="font-bold mb-1">Ollama (Offline/Local)</h5>
+                          <p className="text-xs opacity-80">Llama-3.2-3B (Máxima Privacidad)</p>
+                        </button>
+                      </div>
+
                       {message && (
                         <div className={`mt-6 p-4 rounded-xl text-body-md font-medium ${message.type === 'success' ? 'bg-primary-container text-primary' : 'bg-error-container text-error'}`}>
                           {message.text}
