@@ -50,7 +50,7 @@ export default function InferenceHistory() {
     setError(null);
     try {
       const res = await axios.get<HistoryResponse>(
-        `${API_CONFIG.BASE_URL}/clustering/inference-history`,
+        `${API_CONFIG.BASE_URL}/clustering/integrator/inference-history`,
         { params: { limit: LIMIT, offset: off } }
       );
       setData(res.data);
