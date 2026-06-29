@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { ClipboardList, RefreshCw, AlertTriangle, ChevronLeft, ChevronRight, CheckCircle, Activity } from 'lucide-react';
+import { RefreshCw, AlertTriangle, ChevronLeft, ChevronRight, Activity } from 'lucide-react';
 import axios from 'axios';
 import { API_CONFIG } from '../../application/config/api_config';
 
@@ -60,9 +60,6 @@ export default function ActivityHistory() {
   }, []);
 
   useEffect(() => { fetchData(offset); }, [fetchData, offset]);
-
-  const totalPages = data ? Math.ceil(data.total / LIMIT) : 0;
-  const currentPage = Math.floor(offset / LIMIT) + 1;
 
   const renderActionBadge = (action: string) => {
       switch (action) {
