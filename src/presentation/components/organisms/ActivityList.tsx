@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { Card } from '../atoms/Card';
 import { Avatar } from '../atoms/Avatar';
 import { Badge } from '../atoms/Badge';

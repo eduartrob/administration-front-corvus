@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { Card } from '../atoms/Card';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
