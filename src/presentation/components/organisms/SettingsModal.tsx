@@ -4,6 +4,16 @@ import { X, Save, FileText, Settings, Sliders, CheckCircle } from 'lucide-react'
 import axios from 'axios';
 import { API_CONFIG } from '../../../application/config/api_config';
 
+const ALL_SUPPORTED_EXTENSIONS = [
+  { ext: '.pdf', label: 'Documentos PDF', desc: 'Artículos científicos, tesis y libros.' },
+  { ext: '.md', label: 'Archivos Markdown', desc: 'Documentación técnica y notas.' },
+  { ext: '.txt', label: 'Texto Plano', desc: 'Transcripts o apuntes básicos sin formato.' },
+  { ext: '.docx', label: 'Documentos Word', desc: 'Propuestas de proyectos y ensayos.' },
+  { ext: '.pptx', label: 'Presentaciones', desc: 'Diapositivas y pitch decks.' },
+  { ext: '.csv', label: 'Hojas de Datos', desc: 'Datasets y tablas de resultados.' },
+  { ext: '.xlsx', label: 'Hojas de Cálculo', desc: 'Análisis financiero y métricas.' },
+];
+
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -12,6 +22,7 @@ interface SettingsModalProps {
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<'engine' | 'appearance'>('engine');
   const [allowedExtensions, setAllowedExtensions] = useState<string[]>([]);
+  const [visibleExtensions, setVisibleExtensions] = useState<string[]>(['.pdf', '.md', '.txt']);
   const [llmProvider, setLlmProvider] = useState<'ollama' | 'groq'>('ollama');
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -29,12 +40,16 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     try {
       const res = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/config`);
       if (res.data) {
-        if (res.data.allowed_extensions) setAllowedExtensions(res.data.allowed_extensions);
+        if (res.data.allowed_extensions) {
+          setAllowedExtensions(res.data.allowed_extensions);
+          setVisibleExtensions(prev => Array.from(new Set([...prev, ...res.data.allowed_extensions])));
+        }
         if (res.data.llm_provider) setLlmProvider(res.data.llm_provider);
       }
     } catch (error) {
       console.error('Error fetching config', error);
       setAllowedExtensions(['.pdf', '.md', '.txt']);
+      setVisibleExtensions(['.pdf', '.md', '.txt']);
       setLlmProvider('ollama');
     } finally {
       setIsLoading(false);
@@ -82,15 +97,27 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           </div>
         </div>
         
-        {}
-        <button 
-          onClick={() => toggleExtension(ext)}
-          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${isChecked ? 'bg-primary' : 'bg-surface-variant'}`}
-        >
-          <span 
-            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isChecked ? 'translate-x-6' : 'translate-x-1'}`}
-          />
-        </button>
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => toggleExtension(ext)}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${isChecked ? 'bg-primary' : 'bg-surface-variant'}`}
+          >
+            <span 
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isChecked ? 'translate-x-6' : 'translate-x-1'}`}
+            />
+          </button>
+          
+          <button
+            onClick={() => {
+              setAllowedExtensions(prev => prev.filter(e => e !== ext));
+              setVisibleExtensions(prev => prev.filter(e => e !== ext));
+            }}
+            className="p-1 text-on-surface-variant hover:text-error hover:bg-error-container rounded-full transition-colors"
+            title="Eliminar de la lista"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
       </div>
     );
   };
@@ -163,9 +190,30 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   ) : (
                     <div className="space-y-4">
                       <h4 className="text-body-lg font-bold text-on-surface mt-6 mb-2">Extensiones de Archivo</h4>
-                      <ExtensionToggle ext=".pdf" label="Documentos PDF" desc="Artículos científicos, tesis y libros." />
-                      <ExtensionToggle ext=".md" label="Archivos Markdown" desc="Documentación técnica y notas." />
-                      <ExtensionToggle ext=".txt" label="Texto Plano" desc="Transcripts o apuntes básicos sin formato." />
+                      
+                      {visibleExtensions.map(ext => {
+                        const info = ALL_SUPPORTED_EXTENSIONS.find(e => e.ext === ext) || { ext, label: `Archivo ${ext}`, desc: 'Extensión personalizada' };
+                        return <ExtensionToggle key={ext} ext={info.ext} label={info.label} desc={info.desc} />;
+                      })}
+
+                      <div className="mt-4 p-4 rounded-xl border border-outline-variant/50 border-dashed flex gap-2 bg-surface-container-lowest">
+                        <select 
+                          className="flex-1 bg-surface border border-outline-variant rounded-lg px-3 py-2 text-body-md text-on-surface focus:border-primary focus:outline-none"
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              setVisibleExtensions(prev => Array.from(new Set([...prev, e.target.value])));
+                              setAllowedExtensions(prev => Array.from(new Set([...prev, e.target.value])));
+                              e.target.value = '';
+                            }
+                          }}
+                          defaultValue=""
+                        >
+                          <option value="" disabled>+ Añadir tipo de documento soportado...</option>
+                          {ALL_SUPPORTED_EXTENSIONS.filter(e => !visibleExtensions.includes(e.ext)).map(e => (
+                            <option key={e.ext} value={e.ext}>{e.label} ({e.ext})</option>
+                          ))}
+                        </select>
+                      </div>
                       
                       <h4 className="text-body-lg font-bold text-on-surface mt-8 mb-2 border-t border-outline-variant/50 pt-6">Proveedor de Inteligencia Artificial</h4>
                       <p className="text-body-sm text-on-surface-variant mb-4">Selecciona el motor principal de IA. Groq ofrece inferencia ultra-rápida (&#60;3s), mientras Ollama garantiza 100% privacidad ejecutándose localmente (&#126;40s). Si Groq falla, el sistema usará Ollama automáticamente como respaldo (Failover).</p>
