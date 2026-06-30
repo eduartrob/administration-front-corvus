@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Play, Database, FileClock, Compass } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { ScatterChart, Scatter, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, BarChart, Bar, CartesianGrid } from 'recharts';
+import { ScatterChart, Scatter, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, BarChart, Bar, CartesianGrid, Legend } from 'recharts';
 import { API_CONFIG } from '../../application/config/api_config';
 // -# el scatterdata inicializa vacio ya que debe venir del backend
 const CLUSTER_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
@@ -47,6 +47,7 @@ export default function Clustering() {
   const [recentProjects, setRecentProjects] = useState<any[]>([]);
   const [isExecuting, setIsExecuting] = useState(false);
   const [executeMsg, setExecuteMsg] = useState('');
+  const [html2d, setHtml2d] = useState<string>('');
   const [html3d, setHtml3d] = useState<string>('');
   const [blueOceansCount, setBlueOceansCount] = useState<number>(0);
 
@@ -99,12 +100,12 @@ export default function Clustering() {
       }
 
       try {
-        const scatterRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/clusters-2d`);
-        if (Array.isArray(scatterRes.data)) {
-          setScatterData(scatterRes.data);
+        const scatterRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/clusters-2d-html`);
+        if (typeof scatterRes.data === 'string') {
+          setHtml2d(scatterRes.data);
         }
       } catch (error) {
-        console.error('Error fetching scatter data:', error);
+        console.error('Error fetching 2D html:', error);
       }
 
       try {
@@ -258,41 +259,12 @@ export default function Clustering() {
 
           <div className="flex-1 min-h-[300px] bg-surface-container-lowest rounded-xl border border-outline-variant/30 p-2 overflow-hidden relative">
             {viewMode === '2d' ? (
-              <>
-                {scatterData.length > 0 ? (
-                  <>
-                    <div className="absolute top-4 right-4 flex gap-3 z-10 bg-surface-container-lowest/80 p-2 rounded-lg backdrop-blur-sm border border-outline-variant/30">
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-3 h-3 rounded-full bg-primary"></span>
-                        <span className="text-[10px] font-semibold text-on-surface-variant uppercase">Clusters Densos</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-3 h-3 rounded-full border-2 border-error border-dashed"></span>
-                        <span className="text-[10px] font-semibold text-error uppercase">Océanos Azules</span>
-                      </div>
-                    </div>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" opacity={0.5} />
-                        <XAxis type="number" dataKey="x" hide />
-                        <YAxis type="number" dataKey="y" hide />
-                        <Tooltip cursor={{ strokeDasharray: '3 3' }} />
-                        <Scatter name="Proyectos" data={scatterData} shape={<CustomScatterShape />}>
-                          {scatterData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.label === -1 ? '#ef4444' : CLUSTER_COLORS[entry.label % CLUSTER_COLORS.length]} />
-                          ))}
-                        </Scatter>
-                      </ScatterChart>
-                    </ResponsiveContainer>
-                  </>
-                ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center text-center p-6">
-                    <Database className="w-12 h-12 text-outline-variant mb-4 opacity-50" />
-                    <h4 className="text-body-lg font-bold text-on-surface-variant mb-1">Mapa Semántico Vacío</h4>
-                    <p className="text-body-sm text-outline max-w-sm">No hay datos de coordenadas 2D. Ejecuta el Clustering Global para agrupar los proyectos y generar el mapa topológico.</p>
-                  </div>
-                )}
-              </>
+              <iframe 
+                srcDoc={html2d || "<html><body><div style='display:flex;justify-content:center;align-items:center;height:100%;font-family:sans-serif;color:gray'>Cargando Mapa 2D interactivo...</div></body></html>"} 
+                className="w-full h-full border-0 rounded-xl"
+                title="2D Cluster Map"
+                sandbox="allow-scripts allow-same-origin"
+              />
             ) : (
               <iframe 
                 srcDoc={html3d || "<html><body><div style='display:flex;justify-content:center;align-items:center;height:100%;font-family:sans-serif;color:gray'>Cargando Mapa 3D interactivo...</div></body></html>"} 
