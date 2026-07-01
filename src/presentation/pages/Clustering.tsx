@@ -3,47 +3,13 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Play, Database, FileClock, Compass } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { ScatterChart, Scatter, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, BarChart, Bar, CartesianGrid, Legend } from 'recharts';
+import { XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, BarChart, Bar, CartesianGrid } from 'recharts';
 import { API_CONFIG } from '../../application/config/api_config';
-// -# el scatterdata inicializa vacio ya que debe venir del backend
-const CLUSTER_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
-
-const CustomScatterShape = (props: any) => {
-  const { cx, cy, fill, payload } = props;
-  const isBlueOcean = payload.label === -1;
-  const size = isBlueOcean ? 16 : 14;
-
-  if (isBlueOcean) {
-    return (
-      <g>
-        <path
-          d={`M ${cx} ${cy - size} L ${cx + size * 0.3} ${cy - size * 0.3} L ${cx + size} ${cy - size * 0.3} L ${cx + size * 0.4} ${cy + size * 0.2} L ${cx + size * 0.6} ${cy + size} L ${cx} ${cy + size * 0.5} L ${cx - size * 0.6} ${cy + size} L ${cx - size * 0.4} ${cy + size * 0.2} L ${cx - size} ${cy - size * 0.3} L ${cx - size * 0.3} ${cy - size * 0.3} Z`}
-          fill="#ef4444"
-          stroke="#7f1d1d"
-          strokeWidth={1}
-        />
-        <text x={cx} y={cy} dy={3} textAnchor="middle" fill="#ffffff" fontSize={10} fontWeight="bold">
-          {payload.num}
-        </text>
-      </g>
-    );
-  }
-
-  return (
-    <g>
-      <circle cx={cx} cy={cy} r={size} fill={fill} stroke="#ffffff" strokeWidth={1.5} opacity={0.9} />
-      <text x={cx} y={cy} dy={3.5} textAnchor="middle" fill="#ffffff" fontSize={10} fontWeight="bold">
-        {payload.num}
-      </text>
-    </g>
-  );
-};
 
 export default function Clustering() {
   const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d');
   const [projectCount, setProjectCount] = useState<number>(0);
   const [dynamicBarData, setDynamicBarData] = useState<any[]>([]);
-  const [scatterData, setScatterData] = useState<any[]>([]); 
   const [recentProjects, setRecentProjects] = useState<any[]>([]);
   const [isExecuting, setIsExecuting] = useState(false);
   const [executeMsg, setExecuteMsg] = useState('');
@@ -52,7 +18,7 @@ export default function Clustering() {
   const [blueOceansCount, setBlueOceansCount] = useState<number>(0);
 
   useEffect(() => {
-    const fetchClusteringData = async () => {
+    const fetchStats = async () => {
       try {
         const countRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/projects-count`);
         if (countRes.data && countRes.data.count !== undefined) {
@@ -62,7 +28,6 @@ export default function Clustering() {
         console.error('Error fetching project count:', error);
       }
 
-      
       try {
         const recentRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/recent-projects?limit=5`);
         if (Array.isArray(recentRes.data)) {
@@ -98,7 +63,9 @@ export default function Clustering() {
       } catch (error) {
         console.error('Error fetching cluster stats:', error);
       }
+    };
 
+    const fetchMaps = async () => {
       try {
         const scatterRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/clusters-2d-html`);
         if (typeof scatterRes.data === 'string') {
@@ -118,10 +85,11 @@ export default function Clustering() {
       }
     };
 
-    fetchClusteringData();
+    fetchStats();
+    fetchMaps();
 
-    // -# configurar polling cada 10 segundos para dar la sensacion de tiempo real
-    const intervalId = setInterval(fetchClusteringData, 10000);
+    // -# Configurar polling cada 10 segundos SOLO para las estadísticas
+    const intervalId = setInterval(fetchStats, 10000);
 
     return () => clearInterval(intervalId);
   }, []);
