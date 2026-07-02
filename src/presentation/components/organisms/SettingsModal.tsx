@@ -41,7 +41,9 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const fetchConfig = async () => {
     setIsLoading(true);
     try {
-      const res = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/config`);
+      const res = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/config`, {
+        params: { t: Date.now() }
+      });
       if (res.data) {
         if (res.data.allowed_extensions) {
           const validExts = res.data.allowed_extensions.filter((e: string) => e && e.trim().length > 0);
