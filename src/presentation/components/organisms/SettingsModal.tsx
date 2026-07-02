@@ -23,7 +23,9 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<'engine' | 'appearance'>('engine');
   const [allowedExtensions, setAllowedExtensions] = useState<string[]>([]);
   const [llmProvider, setLlmProvider] = useState<'ollama' | 'groq'>('ollama');
+  const [driveFolderId, setDriveFolderId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<{text: string, type: 'success' | 'error'} | null>(null);
 
@@ -44,6 +46,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           setAllowedExtensions(validExts);
         }
         if (res.data.llm_provider) setLlmProvider(res.data.llm_provider);
+        if (res.data.drive_folder_id) setDriveFolderId(res.data.drive_folder_id);
       }
     } catch (error) {
       console.error('Error fetching config', error);
@@ -60,7 +63,8 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     try {
       await axios.post(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/config`, {
         allowed_extensions: allowedExtensions,
-        llm_provider: llmProvider
+        llm_provider: llmProvider,
+        drive_folder_id: driveFolderId
       });
       setMessage({ text: 'Configuración actualizada con éxito.', type: 'success' });
       setTimeout(() => setMessage(null), 3000);
@@ -107,6 +111,28 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         </div>
       </div>
     );
+  };
+
+  const handleScanDrive = async () => {
+    if (!driveFolderId) {
+      setMessage({ text: 'Por favor ingresa el ID de la carpeta primero e intenta guardar.', type: 'error' });
+      return;
+    }
+    setIsScanning(true);
+    setMessage(null);
+    try {
+      await axios.post(`${API_CONFIG.BASE_URL}/clustering/integrator/process-folder`, {
+        folder_id: driveFolderId,
+        access_token: "service-account",
+        user_id: "admin"
+      });
+      setMessage({ text: 'Escaneo iniciado en segundo plano. Cierra esta ventana y revisa los proyectos pendientes.', type: 'success' });
+    } catch (error) {
+      console.error('Error al iniciar el escaneo de Drive', error);
+      setMessage({ text: 'Error al iniciar el escaneo de Drive.', type: 'error' });
+    } finally {
+      setIsScanning(false);
+    }
   };
 
   return (
@@ -181,6 +207,34 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                       {ALL_SUPPORTED_EXTENSIONS.map(info => (
                         <ExtensionToggle key={info.ext} ext={info.ext} label={info.label} desc={info.desc} />
                       ))}
+
+                      <h4 className="text-body-lg font-bold text-on-surface mt-8 mb-2 border-t border-outline-variant/50 pt-6">Google Drive (Cuenta de Servicio)</h4>
+                      <p className="text-body-sm text-on-surface-variant mb-4">Ingresa el ID de la carpeta institucional donde se guardan los proyectos en formato PDF.</p>
+                      
+                      <div className="flex gap-4 items-end">
+                        <div className="flex-1">
+                          <label className="block text-label-md font-bold text-on-surface-variant mb-1">Folder ID</label>
+                          <input 
+                            type="text" 
+                            value={driveFolderId}
+                            onChange={(e) => setDriveFolderId(e.target.value)}
+                            placeholder="Ej. 1A2b3C4d5E6f7G8h9I0j..." 
+                            className="w-full bg-surface-container-lowest border border-outline-variant/50 rounded-xl px-4 py-3 text-body-md text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                          />
+                        </div>
+                        <button 
+                          onClick={handleScanDrive}
+                          disabled={isScanning || !driveFolderId}
+                          className={`flex items-center justify-center h-12 px-6 rounded-xl font-label-md transition-colors ${isScanning || !driveFolderId ? 'bg-surface-variant text-on-surface-variant cursor-not-allowed' : 'bg-secondary text-white hover:bg-secondary/90 shadow-sm'}`}
+                        >
+                          {isScanning ? (
+                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                          ) : (
+                            'Escanear Drive'
+                          )}
+                        </button>
+                      </div>
+
                       <h4 className="text-body-lg font-bold text-on-surface mt-8 mb-2 border-t border-outline-variant/50 pt-6">Proveedor de Inteligencia Artificial</h4>
                       <p className="text-body-sm text-on-surface-variant mb-4">Selecciona el motor principal de IA. Groq ofrece inferencia ultra-rápida (&#60;3s), mientras Ollama garantiza 100% privacidad ejecutándose localmente (&#126;40s). Si Groq falla, el sistema usará Ollama automáticamente como respaldo (Failover).</p>
                       
