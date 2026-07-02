@@ -28,11 +28,13 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [isScanning, setIsScanning] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<{text: string, type: 'success' | 'error'} | null>(null);
+  const [scanMessage, setScanMessage] = useState<{text: string, type: 'success' | 'error'} | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       fetchConfig();
       setMessage(null);
+      setScanMessage(null);
     }
   }, [isOpen]);
 
@@ -115,21 +117,21 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
   const handleScanDrive = async () => {
     if (!driveFolderId) {
-      setMessage({ text: 'Por favor ingresa el ID de la carpeta primero e intenta guardar.', type: 'error' });
+      setScanMessage({ text: 'Por favor ingresa el ID de la carpeta primero e intenta guardar.', type: 'error' });
       return;
     }
     setIsScanning(true);
-    setMessage(null);
+    setScanMessage(null);
     try {
       await axios.post(`${API_CONFIG.BASE_URL}/clustering/integrator/process-folder`, {
         folder_id: driveFolderId,
         access_token: "service-account",
         user_id: "admin"
       });
-      setMessage({ text: 'Escaneo iniciado en segundo plano. Cierra esta ventana y revisa los proyectos pendientes.', type: 'success' });
+      setScanMessage({ text: 'Escaneo iniciado en segundo plano. Cierra esta ventana y revisa los proyectos pendientes.', type: 'success' });
     } catch (error) {
       console.error('Error al iniciar el escaneo de Drive', error);
-      setMessage({ text: 'Error al iniciar el escaneo de Drive.', type: 'error' });
+      setScanMessage({ text: 'Error al iniciar el escaneo de Drive.', type: 'error' });
     } finally {
       setIsScanning(false);
     }
@@ -234,6 +236,12 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                           )}
                         </button>
                       </div>
+                      
+                      {scanMessage && (
+                        <div className={`mt-3 p-3 rounded-xl text-body-sm font-medium ${scanMessage.type === 'success' ? 'bg-primary-container text-primary' : 'bg-error-container text-error'}`}>
+                          {scanMessage.text}
+                        </div>
+                      )}
 
                       <h4 className="text-body-lg font-bold text-on-surface mt-8 mb-2 border-t border-outline-variant/50 pt-6">Proveedor de Inteligencia Artificial</h4>
                       <p className="text-body-sm text-on-surface-variant mb-4">Selecciona el motor principal de IA. Groq ofrece inferencia ultra-rápida (&#60;3s), mientras Ollama garantiza 100% privacidad ejecutándose localmente (&#126;40s). Si Groq falla, el sistema usará Ollama automáticamente como respaldo (Failover).</p>
