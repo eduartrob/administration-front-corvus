@@ -15,6 +15,19 @@ interface MinimapPreviewProps {
   targetClusterId?: number | null;
 }
 
+const createStarPath = (cx: number, cy: number, outerRadius: number, innerRadius: number, numPoints = 5) => {
+  let path = '';
+  const angle = Math.PI / numPoints;
+  for (let i = 0; i < 2 * numPoints; i++) {
+    const r = (i % 2 === 0) ? outerRadius : innerRadius;
+    const currAngle = i * angle - Math.PI / 2;
+    const x = cx + Math.cos(currAngle) * r;
+    const y = cy + Math.sin(currAngle) * r;
+    path += (i === 0 ? 'M' : 'L') + `${x},${y} `;
+  }
+  return path + 'Z';
+};
+
 export const MinimapPreview: React.FC<MinimapPreviewProps> = ({ clusters, targetClusterId }) => {
   const { minX, maxX, minY, maxY } = useMemo(() => {
     if (clusters.length === 0) return { minX: -10, maxX: 10, minY: -10, maxY: 10 };
@@ -25,68 +38,95 @@ export const MinimapPreview: React.FC<MinimapPreviewProps> = ({ clusters, target
       if (c.y < minY) minY = c.y;
       if (c.y > maxY) maxY = c.y;
     });
-    const padX = Math.max((maxX - minX) * 0.15, 1);
-    const padY = Math.max((maxY - minY) * 0.15, 1);
+    const padX = Math.max((maxX - minX) * 0.25, 2);
+    const padY = Math.max((maxY - minY) * 0.25, 2);
     return { minX: minX - padX, maxX: maxX + padX, minY: minY - padY, maxY: maxY + padY };
   }, [clusters]);
 
   const targetCluster = targetClusterId != null ? clusters.find(c => c.id === targetClusterId) : null;
-  const dotRadius = Math.max((maxX - minX) * 0.04, 0.5);
+  const width = maxX - minX;
+  const height = maxY - minY;
+  const dotRadius = Math.max(width * 0.015, 0.15);
+
+  // Generate grid lines
+  const gridLines = [];
+  const xStep = width / 6;
+  const yStep = height / 6;
+  for (let i = 1; i < 6; i++) {
+    gridLines.push(<line key={`vx-${i}`} x1={minX + i * xStep} y1={minY} x2={minX + i * xStep} y2={maxY} stroke="#f0f0f0" strokeWidth={width * 0.002} />);
+    gridLines.push(<line key={`hy-${i}`} x1={minX} y1={minY + i * yStep} x2={maxX} y2={minY + i * yStep} stroke="#f0f0f0" strokeWidth={height * 0.002} />);
+  }
 
   return (
-    <div className="w-64 h-48 bg-slate-900 rounded-lg p-2 border border-slate-700 relative overflow-hidden shadow-2xl flex flex-col z-50">
-      <div className="text-[11px] text-slate-300 font-semibold mb-1 text-center truncate px-2">
+    <div className="w-80 h-56 bg-white rounded-xl p-3 border border-outline-variant/30 relative overflow-hidden shadow-2xl flex flex-col z-50">
+      <div className="text-xs text-slate-700 font-semibold mb-2 text-center truncate px-2">
         {targetCluster ? `Clúster: ${targetCluster.name}` : (clusters.length > 0 ? 'Clúster no guardado' : 'Cargando mapa...')}
       </div>
-      <div className="flex-1 relative w-full h-full">
+      <div className="flex-1 relative w-full h-full bg-slate-50/50 rounded-lg border border-outline-variant/20">
         <svg 
-          viewBox={`${minX} ${minY} ${maxX - minX} ${maxY - minY}`} 
+          viewBox={`${minX} ${minY} ${width} ${height}`} 
           className="w-full h-full"
-          preserveAspectRatio="xMidYMid meet"
+          preserveAspectRatio="none"
         >
+          {gridLines}
+
+          {/* Ovals mimicking the Isolation Forest backgrounds */}
+          <ellipse cx={(minX + maxX)/2} cy={(minY + maxY)/2} rx={width * 0.4} ry={height * 0.3} fill="#fef3c7" opacity="0.4" />
+          <ellipse cx={(minX + maxX)/2} cy={(minY + maxY)/2} rx={width * 0.25} ry={height * 0.15} fill="#fde68a" opacity="0.4" />
+
           {clusters.map(c => {
-            const r = Math.max((c.size / 10) + dotRadius, dotRadius * 0.5);
             const isTarget = c.id === targetClusterId;
+            // Draw regular clusters as small dots
             return (
               <circle
                 key={c.id}
                 cx={c.x}
                 cy={c.y}
-                r={isTarget ? r * 1.2 : r}
-                fill={c.color}
-                opacity={isTarget ? 0.9 : 0.3}
-                stroke={isTarget ? 'white' : 'transparent'}
-                strokeWidth={isTarget ? 1.5 : 0}
+                r={dotRadius * 1.5}
+                fill="#f59e0b"
+                opacity={isTarget ? 0.2 : 0.8}
+                stroke="white"
+                strokeWidth={dotRadius * 0.3}
               />
             );
           })}
 
+          {/* Target Cluster shown as a prominent red star */}
           {targetCluster && (
-            <motion.circle
-              cx={targetCluster.x}
-              cy={targetCluster.y}
-              r={dotRadius}
+            <motion.path
+              d={createStarPath(targetCluster.x, targetCluster.y, dotRadius * 4.5, dotRadius * 2.2)}
               fill="#ef4444"
-              initial={{ opacity: 0, scale: 5, y: -dotRadius * 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              transition={{ type: "spring", stiffness: 300, damping: 15 }}
-            />
-          )}
-
-          {targetCluster && (
-            <motion.circle
-              cx={targetCluster.x}
-              cy={targetCluster.y}
-              r={dotRadius}
-              fill="transparent"
-              stroke="#ef4444"
-              strokeWidth={dotRadius * 0.25}
-              initial={{ scale: 1, opacity: 1 }}
-              animate={{ scale: 3, opacity: 0 }}
-              transition={{ duration: 1.5, repeat: Infinity, ease: "easeOut" }}
+              stroke="white"
+              strokeWidth={dotRadius * 0.5}
+              initial={{ scale: 0, rotate: -180 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ type: "spring", stiffness: 200, damping: 10 }}
             />
           )}
         </svg>
+        
+        {/* Y-axis label */}
+        <div className="absolute top-1/2 -left-[6px] transform -translate-y-1/2 -rotate-90 text-[8px] font-medium text-slate-400 tracking-wider">
+          UMAP Dim 2
+        </div>
+
+        {/* Legend */}
+        <div className="absolute top-1 right-1 bg-white/90 border border-slate-200 rounded p-1 shadow-sm text-[9px] flex flex-col gap-1 z-10 pointer-events-none">
+          <div className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-full bg-amber-500 border border-white"></div>
+            <span className="text-slate-600 font-medium">Clústeres</span>
+          </div>
+          {targetCluster && (
+            <div className="flex items-center gap-1.5">
+              <svg width="10" height="10" viewBox="0 0 10 10" className="overflow-visible">
+                <path d={createStarPath(5, 5, 5, 2.5)} fill="#ef4444" stroke="white" strokeWidth="1" />
+              </svg>
+              <span className="text-slate-700 font-bold truncate max-w-[80px]" title={targetCluster.name}>
+                {targetCluster.name}
+              </span>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
