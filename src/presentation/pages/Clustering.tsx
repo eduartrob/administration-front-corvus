@@ -19,6 +19,31 @@ export default function Clustering() {
   const [pendingCount, setPendingCount] = useState<number>(0);
   const [pendingPercentage, setPendingPercentage] = useState<number>(0);
   const isExecutingRef = useRef(false);
+  const [selectedTab, setSelectedTab] = useState<string>('global');
+
+  const fetchMaps = async (tab: string) => {
+    try {
+      const scatterRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/clusters-2d-html?filter_cluster_id=${tab}`);
+      if (typeof scatterRes.data === 'string') {
+        setHtml2d(scatterRes.data);
+      }
+    } catch (error) {
+      console.error('Error fetching 2D html:', error);
+    }
+
+    try {
+      const htmlRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/clusters-3d?filter_cluster_id=${tab}`);
+      if (typeof htmlRes.data === 'string') {
+        setHtml3d(htmlRes.data);
+      }
+    } catch (error) {
+      console.error('Error fetching 3D html:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchMaps(selectedTab);
+  }, [selectedTab]);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -61,13 +86,15 @@ export default function Clustering() {
 
            // Si acaba de terminar de ejecutarse, actualizamos también los mapas
            if (wasExecuting === true && isNowExecuting === false) {
-             fetchMaps();
+             setSelectedTab('global');
+             fetchMaps('global');
            }
         }
         if (statsRes.data && statsRes.data.clusters_detail) {
           const formattedData = statsRes.data.clusters_detail.map((c: any) => ({
             name: c.cluster_name || `Clúster ${c.cluster_id}`,
-            value: c.project_count
+            value: c.project_count,
+            cluster_id: c.cluster_id
           }));
           setDynamicBarData(formattedData);
         }
@@ -90,29 +117,8 @@ export default function Clustering() {
       }
     };
 
-    const fetchMaps = async () => {
-      try {
-        const scatterRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/clusters-2d-html`);
-        if (typeof scatterRes.data === 'string') {
-          setHtml2d(scatterRes.data);
-        }
-      } catch (error) {
-        console.error('Error fetching 2D html:', error);
-      }
-
-      try {
-        const htmlRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/clusters-3d`);
-        if (typeof htmlRes.data === 'string') {
-          setHtml3d(htmlRes.data);
-        }
-      } catch (error) {
-        console.error('Error fetching 3D html:', error);
-      }
-    };
-
     fetchStats();
-    fetchMaps();
-
+    
     // -# Configurar polling cada 10 segundos SOLO para las estadísticas
     const intervalId = setInterval(fetchStats, 10000);
 
@@ -246,6 +252,31 @@ export default function Clustering() {
                 3D (Plotly)
               </button>
             </div>
+          </div>
+
+          {}
+          <div className="flex overflow-x-auto gap-2 pb-4 mb-2 scrollbar-thin scrollbar-thumb-outline-variant scrollbar-track-transparent">
+            <button
+              onClick={() => setSelectedTab('global')}
+              className={`whitespace-nowrap px-4 py-2 rounded-lg font-label-md transition-all ${selectedTab === 'global' ? 'bg-primary text-white shadow-sm' : 'bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-low border border-outline-variant/50'}`}
+            >
+              Vista Global
+            </button>
+            {dynamicBarData.map((c, i) => (
+              <button
+                key={i}
+                onClick={() => setSelectedTab(c.cluster_id?.toString() || '')}
+                className={`whitespace-nowrap px-4 py-2 rounded-lg font-label-md transition-all ${selectedTab === c.cluster_id?.toString() ? 'bg-primary text-white shadow-sm' : 'bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-low border border-outline-variant/50'}`}
+              >
+                {c.name}
+              </button>
+            ))}
+            <button
+              onClick={() => setSelectedTab('blue_oceans')}
+              className={`whitespace-nowrap px-4 py-2 rounded-lg font-label-md transition-all ${selectedTab === 'blue_oceans' ? 'bg-error text-white shadow-sm' : 'bg-error-container/20 text-error hover:bg-error-container/40 border border-error/30'}`}
+            >
+              🌊 Océanos Azules
+            </button>
           </div>
 
           <div className="flex-1 min-h-[300px] bg-surface-container-lowest rounded-xl border border-outline-variant/30 p-2 overflow-hidden relative">
