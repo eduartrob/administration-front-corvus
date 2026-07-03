@@ -51,6 +51,9 @@ export default function Clustering() {
       
       try {
         const statsRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/clusters-stats`);
+        if (statsRes.data && statsRes.data.is_clustering_running !== undefined) {
+           setIsExecuting(statsRes.data.is_clustering_running);
+        }
         if (statsRes.data && statsRes.data.clusters_detail) {
           const formattedData = statsRes.data.clusters_detail.map((c: any) => ({
             name: c.cluster_name || `Clúster ${c.cluster_id}`,
@@ -115,8 +118,8 @@ export default function Clustering() {
     } catch (error) {
       console.error(error);
       setExecuteMsg('Error al iniciar clustering');
-    } finally {
       setIsExecuting(false);
+    } finally {
       setTimeout(() => setExecuteMsg(''), 6000);
     }
   };
