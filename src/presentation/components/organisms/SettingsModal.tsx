@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Save, FileText, Settings, Sliders, CheckCircle } from 'lucide-react';
+import { X, Save, FileText, Settings, Sliders, CheckCircle, Edit2, Trash2 } from 'lucide-react';
 import axios from 'axios';
 import { API_CONFIG } from '../../../application/config/api_config';
 
@@ -24,6 +24,8 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [allowedExtensions, setAllowedExtensions] = useState<string[]>([]);
   const [llmProvider, setLlmProvider] = useState<'ollama' | 'groq'>('ollama');
   const [driveFolderId, setDriveFolderId] = useState<string>('');
+  const [savedDriveFolderId, setSavedDriveFolderId] = useState<string>('');
+  const [isEditingDriveId, setIsEditingDriveId] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -33,8 +35,10 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   useEffect(() => {
     if (isOpen) {
       fetchConfig();
+      fetchConfig();
       setMessage(null);
       setScanMessage(null);
+      setIsEditingDriveId(false);
     }
   }, [isOpen]);
 
@@ -50,7 +54,12 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           setAllowedExtensions(validExts);
         }
         if (res.data.llm_provider) setLlmProvider(res.data.llm_provider);
-        if (res.data.drive_folder_id) setDriveFolderId(res.data.drive_folder_id);
+        if (res.data.drive_folder_id) {
+          setDriveFolderId(res.data.drive_folder_id);
+          setSavedDriveFolderId(res.data.drive_folder_id);
+        } else {
+          setSavedDriveFolderId('');
+        }
       }
     } catch (error) {
       console.error('Error fetching config', error);
@@ -70,6 +79,9 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         llm_provider: llmProvider,
         drive_folder_id: driveFolderId
       });
+      });
+      setSavedDriveFolderId(driveFolderId);
+      setIsEditingDriveId(false);
       setMessage({ text: 'Configuración actualizada con éxito.', type: 'success' });
       setTimeout(() => setMessage(null), 3000);
     } catch (error) {
@@ -215,28 +227,63 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                       <h4 className="text-body-lg font-bold text-on-surface mt-8 mb-2 border-t border-outline-variant/50 pt-6">Google Drive (Cuenta de Servicio)</h4>
                       <p className="text-body-sm text-on-surface-variant mb-4">Ingresa el ID de la carpeta institucional donde se guardan los proyectos en formato PDF.</p>
                       
-                      <div className="flex gap-4 items-end">
+                      <div className="flex gap-2 items-end">
                         <div className="flex-1">
                           <label className="block text-label-md font-bold text-on-surface-variant mb-1">Folder ID</label>
                           <input 
                             type="text" 
                             value={driveFolderId}
                             onChange={(e) => setDriveFolderId(e.target.value)}
+                            disabled={!!savedDriveFolderId && !isEditingDriveId}
                             placeholder="Ej. 1A2b3C4d5E6f7G8h9I0j..." 
-                            className="w-full bg-surface-container-lowest border border-outline-variant/50 rounded-xl px-4 py-3 text-body-md text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                            className={`w-full bg-surface-container-lowest border border-outline-variant/50 rounded-xl px-4 py-3 text-body-md text-on-surface focus:outline-none transition-all ${!!savedDriveFolderId && !isEditingDriveId ? 'opacity-60 cursor-not-allowed' : 'focus:border-primary focus:ring-1 focus:ring-primary'}`}
                           />
                         </div>
-                        <button 
-                          onClick={handleScanDrive}
-                          disabled={isScanning || !driveFolderId}
-                          className={`flex items-center justify-center h-12 px-6 rounded-xl font-label-md transition-colors ${isScanning || !driveFolderId ? 'bg-surface-variant text-on-surface-variant cursor-not-allowed' : 'bg-secondary text-white hover:bg-secondary/90 shadow-sm'}`}
-                        >
-                          {isScanning ? (
-                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                          ) : (
-                            'Escanear Drive'
-                          )}
-                        </button>
+                        {!!savedDriveFolderId && !isEditingDriveId ? (
+                          <>
+                            <button
+                              title="Modificar ID"
+                              onClick={() => setIsEditingDriveId(true)}
+                              className="flex items-center justify-center h-12 w-12 rounded-xl transition-colors bg-surface-container hover:bg-surface-container-highest text-on-surface-variant border border-outline-variant/30"
+                            >
+                              <Edit2 className="w-5 h-5" />
+                            </button>
+                            <button
+                              title="Borrar ID"
+                              onClick={() => {
+                                setDriveFolderId('');
+                                setIsEditingDriveId(true);
+                              }}
+                              className="flex items-center justify-center h-12 w-12 rounded-xl transition-colors bg-error-container/30 hover:bg-error-container/60 text-error border border-error/20"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                            <button 
+                              onClick={handleScanDrive}
+                              disabled={isScanning}
+                              className={`flex items-center justify-center h-12 px-5 ml-2 rounded-xl font-label-md transition-colors ${isScanning ? 'bg-surface-variant text-on-surface-variant cursor-not-allowed' : 'bg-secondary text-white hover:bg-secondary/90 shadow-sm'}`}
+                            >
+                              {isScanning ? (
+                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                              ) : (
+                                'Escanear Drive'
+                              )}
+                            </button>
+                          </>
+                        ) : (
+                          <button 
+                            onClick={handleScanDrive}
+                            disabled={isScanning || !driveFolderId || (isEditingDriveId && driveFolderId !== savedDriveFolderId)}
+                            title={isEditingDriveId && driveFolderId !== savedDriveFolderId ? "Guarda los cambios primero" : ""}
+                            className={`flex items-center justify-center h-12 px-6 ml-2 rounded-xl font-label-md transition-colors ${isScanning || !driveFolderId || (isEditingDriveId && driveFolderId !== savedDriveFolderId) ? 'bg-surface-variant text-on-surface-variant cursor-not-allowed' : 'bg-secondary text-white hover:bg-secondary/90 shadow-sm'}`}
+                          >
+                            {isScanning ? (
+                              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                            ) : (
+                              'Escanear Drive'
+                            )}
+                          </button>
+                        )}
                       </div>
                       
                       {scanMessage && (
