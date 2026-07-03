@@ -46,14 +46,17 @@ export const MinimapPreview: React.FC<MinimapPreviewProps> = ({ clusters, target
         >
           {clusters.map(c => {
             const r = Math.max((c.size / 10) + dotRadius, dotRadius * 0.5);
+            const isTarget = c.id === targetClusterId;
             return (
               <circle
                 key={c.id}
                 cx={c.x}
                 cy={c.y}
-                r={r}
+                r={isTarget ? r * 1.2 : r}
                 fill={c.color}
-                opacity={0.4}
+                opacity={isTarget ? 0.9 : 0.3}
+                stroke={isTarget ? 'white' : 'transparent'}
+                strokeWidth={isTarget ? 1.5 : 0}
               />
             );
           })}
