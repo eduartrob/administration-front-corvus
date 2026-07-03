@@ -79,7 +79,6 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         llm_provider: llmProvider,
         drive_folder_id: driveFolderId
       });
-      });
       setSavedDriveFolderId(driveFolderId);
       setIsEditingDriveId(false);
       setMessage({ text: 'Configuración actualizada con éxito.', type: 'success' });
