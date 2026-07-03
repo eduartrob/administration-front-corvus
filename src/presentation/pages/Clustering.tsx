@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { Play, Database, FileClock, Compass } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -18,6 +18,7 @@ export default function Clustering() {
   const [blueOceansCount, setBlueOceansCount] = useState<number>(0);
   const [pendingCount, setPendingCount] = useState<number>(0);
   const [pendingPercentage, setPendingPercentage] = useState<number>(0);
+  const isExecutingRef = useRef(false);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -52,7 +53,16 @@ export default function Clustering() {
       try {
         const statsRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/clusters-stats`);
         if (statsRes.data && statsRes.data.is_clustering_running !== undefined) {
-           setIsExecuting(statsRes.data.is_clustering_running);
+           const wasExecuting = isExecutingRef.current;
+           const isNowExecuting = statsRes.data.is_clustering_running;
+           
+           setIsExecuting(isNowExecuting);
+           isExecutingRef.current = isNowExecuting;
+
+           // Si acaba de terminar de ejecutarse, actualizamos también los mapas
+           if (wasExecuting === true && isNowExecuting === false) {
+             fetchMaps();
+           }
         }
         if (statsRes.data && statsRes.data.clusters_detail) {
           const formattedData = statsRes.data.clusters_detail.map((c: any) => ({
