@@ -16,6 +16,8 @@ export default function Clustering() {
   const [html2d, setHtml2d] = useState<string>('');
   const [html3d, setHtml3d] = useState<string>('');
   const [blueOceansCount, setBlueOceansCount] = useState<number>(0);
+  const [pendingCount, setPendingCount] = useState<number>(0);
+  const [pendingPercentage, setPendingPercentage] = useState<number>(0);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -26,6 +28,16 @@ export default function Clustering() {
         }
       } catch (error) {
         console.error('Error fetching project count:', error);
+      }
+
+      try {
+        const pendingRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/pending-projects-count`);
+        if (pendingRes.data) {
+          setPendingCount(pendingRes.data.pending_count || 0);
+          setPendingPercentage(pendingRes.data.pending_percentage || 0);
+        }
+      } catch (error) {
+        console.error('Error fetching pending projects count:', error);
       }
 
       try {
@@ -110,8 +122,6 @@ export default function Clustering() {
   };
 
   const clusteredCount = dynamicBarData.reduce((acc, curr) => acc + (curr.value || 0), 0) + blueOceansCount;
-  const pendingClustering = Math.max(0, projectCount - clusteredCount);
-  const pendingPercentage = projectCount > 0 ? (pendingClustering / projectCount) * 100 : 0;
 
   return (
     <motion.div
@@ -172,7 +182,7 @@ export default function Clustering() {
                 <FileClock className="w-6 h-6" />
               </div>
             </div>
-            <h2 className="text-display-lg font-bold text-on-surface mb-4 leading-none">{pendingClustering}</h2>
+            <h2 className="text-display-lg font-bold text-on-surface mb-4 leading-none">{pendingCount}</h2>
             
             <div className="w-full bg-surface-container-highest rounded-full h-1.5 mb-2">
               <div className="bg-secondary h-full rounded-full" style={{ width: `${pendingPercentage}%` }}></div>
