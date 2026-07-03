@@ -84,10 +84,16 @@ export default function Clustering() {
            setIsExecuting(isNowExecuting);
            isExecutingRef.current = isNowExecuting;
 
+           if (statsRes.data.last_error && !isNowExecuting) {
+             setExecuteMsg(`Fallo en el servidor: ${statsRes.data.last_error}`);
+           }
+
            // Si acaba de terminar de ejecutarse, actualizamos también los mapas
            if (wasExecuting === true && isNowExecuting === false) {
-             setSelectedTab('global');
-             fetchMaps('global');
+             if (!statsRes.data.last_error) {
+               setSelectedTab('global');
+               fetchMaps('global');
+             }
            }
         }
         if (statsRes.data && statsRes.data.clusters_detail) {
