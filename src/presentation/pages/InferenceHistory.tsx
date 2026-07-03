@@ -18,7 +18,7 @@ interface InferenceRecord {
   cluster_id?: number | null;
 }
 
-import { MinimapPreview, MinimapCluster } from '../components/molecules/MinimapPreview';
+import { MinimapPreview, type MinimapCluster } from '../components/molecules/MinimapPreview';
 
 interface HistoryResponse {
   total: number;
