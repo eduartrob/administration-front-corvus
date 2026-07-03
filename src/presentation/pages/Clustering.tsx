@@ -5,6 +5,7 @@ import { Play, Database, FileClock, Compass } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, BarChart, Bar, CartesianGrid } from 'recharts';
 import { API_CONFIG } from '../../application/config/api_config';
+import { ToastNotification } from '../components/molecules/ToastNotification';
 
 export default function Clustering() {
   const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d');
@@ -19,6 +20,8 @@ export default function Clustering() {
   const [pendingCount, setPendingCount] = useState<number>(0);
   const [pendingPercentage, setPendingPercentage] = useState<number>(0);
   const isExecutingRef = useRef(false);
+  const prevPendingCountRef = useRef<number | null>(null);
+  const [toastMsg, setToastMsg] = useState('');
   const [selectedTab, setSelectedTab] = useState<string>('global');
 
   const fetchMaps = async (tab: string) => {
@@ -59,8 +62,14 @@ export default function Clustering() {
       try {
         const pendingRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/pending-projects-count`);
         if (pendingRes.data) {
-          setPendingCount(pendingRes.data.pending_count || 0);
+          const newPendingCount = pendingRes.data.pending_count || 0;
+          setPendingCount(newPendingCount);
           setPendingPercentage(pendingRes.data.pending_percentage || 0);
+
+          if (prevPendingCountRef.current !== null && newPendingCount > prevPendingCountRef.current) {
+            setToastMsg(`¡Se han detectado ${newPendingCount - prevPendingCountRef.current} nuevos proyectos en tiempo real!`);
+          }
+          prevPendingCountRef.current = newPendingCount;
         }
       } catch (error) {
         console.error('Error fetching pending projects count:', error);
@@ -373,6 +382,7 @@ export default function Clustering() {
           </div>
         </div>
       </div>
+      <ToastNotification isOpen={!!toastMsg} message={toastMsg} onClose={() => setToastMsg('')} />
     </motion.div>
   );
 }
