@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './application/contexts/AuthContext';
 import { ThemeProvider } from './application/contexts/ThemeContext';
+import { NotificationProvider } from './application/contexts/NotificationContext';
 import { ProtectedRoute } from './presentation/components/templates/ProtectedRoute';
 import { MainLayout } from './presentation/components/templates/MainLayout';
 import Login from './presentation/pages/Login';
@@ -46,9 +47,11 @@ function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <Router>
-          <AppRoutes />
-        </Router>
+        <NotificationProvider>
+          <Router>
+            <AppRoutes />
+          </Router>
+        </NotificationProvider>
       </AuthProvider>
     </ThemeProvider>
   );
