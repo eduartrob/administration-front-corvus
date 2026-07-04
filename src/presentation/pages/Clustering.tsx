@@ -221,20 +221,7 @@ export default function Clustering() {
             </div>
           </div>
 
-          <div className="glass-panel p-6 rounded-2xl relative overflow-hidden">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-body-md text-on-surface-variant">Nuevos Proyectos<br/>(Pendientes)</p>
-              <div className="w-12 h-12 bg-secondary-container/30 rounded-xl flex items-center justify-center text-secondary border border-secondary/20">
-                <FileClock className="w-6 h-6" />
-              </div>
-            </div>
-            <h2 className="text-display-lg font-bold text-on-surface mb-4 leading-none">{pendingCount}</h2>
-            
-            <div className="w-full bg-surface-container-highest rounded-full h-1.5 mb-2">
-              <div className="bg-secondary h-full rounded-full" style={{ width: `${pendingPercentage}%` }}></div>
-            </div>
-            <p className="text-[12px] font-medium text-on-surface-variant text-right">{pendingPercentage.toFixed(1)}% del lote actual</p>
-          </div>
+
 
           {}
           <div className="glass-panel p-6 rounded-2xl flex flex-col justify-between border border-error-container/30 bg-error-container/5 hover:bg-error-container/10 transition-colors">
