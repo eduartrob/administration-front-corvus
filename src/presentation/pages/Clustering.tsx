@@ -219,36 +219,45 @@ export default function Clustering() {
           </div>
 
           {/* Monitoreo de Deriva (Drift) */}
-          {driftMetrics && (
-            <div className={`glass-panel p-6 rounded-2xl flex flex-col justify-between transition-colors ${driftMetrics.status === 'alert' ? 'border border-error/40 bg-error/5 hover:bg-error/10' : ''}`}>
-              <div className="flex items-center justify-between mb-4">
-                <p className="text-body-md text-on-surface-variant">Tasa de Deriva<br/>(Drift Rate)</p>
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center border ${driftMetrics.status === 'alert' ? 'bg-error-container/30 text-error border-error/20' : 'bg-primary-container/30 text-primary border-primary/20'}`}>
-                  <BarChart2 className="w-6 h-6" />
-                </div>
-              </div>
-              <div>
+          {(() => {
+            const metrics = driftMetrics || {
+              status: 'normal',
+              drift_rate_pct: 0,
+              message: 'Ecosistema estable.',
+              total_new_projects: 0,
+              sse_anomalies_count: 0
+            };
+            return (
+              <div className={`glass-panel p-6 rounded-2xl flex flex-col justify-between transition-colors ${metrics.status === 'alert' ? 'border border-error/40 bg-error/5 hover:bg-error/10' : ''}`}>
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className={`text-display-lg font-bold leading-none ${driftMetrics.status === 'alert' ? 'text-error' : 'text-on-surface'}`}>
-                    {driftMetrics.drift_rate_pct}%
-                  </h2>
-                  <span className={`px-3 py-1 text-label-sm font-semibold rounded-full border ${driftMetrics.status === 'alert' ? 'bg-error/10 text-error border-error/30 animate-pulse' : 'bg-surface-container-low text-on-surface-variant border-outline/30'}`}>
-                    {driftMetrics.status === 'alert' ? 'Requiere Atención' : 'Estable'}
-                  </span>
+                  <p className="text-body-md text-on-surface-variant">Tasa de Deriva<br/>(Drift Rate)</p>
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center border ${metrics.status === 'alert' ? 'bg-error-container/30 text-error border-error/20' : 'bg-primary-container/30 text-primary border-primary/20'}`}>
+                    <BarChart2 className="w-6 h-6" />
+                  </div>
                 </div>
-                <p className={`text-label-sm mb-3 ${driftMetrics.status === 'alert' ? 'text-error font-medium' : 'text-on-surface-variant'}`}>
-                  {driftMetrics.status === 'alert' ? '⚠️ ' : '✅ '}{driftMetrics.message}
-                </p>
-                <div className="w-full bg-surface-container-highest rounded-full h-1.5 mb-2">
-                  <div className={`h-full rounded-full ${driftMetrics.status === 'alert' ? 'bg-error' : 'bg-primary'}`} style={{ width: `${Math.min(driftMetrics.drift_rate_pct, 100)}%` }}></div>
-                </div>
-                <div className="flex justify-between items-center mt-1">
-                  <p className="text-[12px] font-medium text-on-surface-variant">Nuevos: {driftMetrics.total_new_projects}</p>
-                  <p className="text-[12px] font-medium text-on-surface-variant">Anomalías: {driftMetrics.sse_anomalies_count}</p>
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className={`text-display-lg font-bold leading-none ${metrics.status === 'alert' ? 'text-error' : 'text-on-surface'}`}>
+                      {metrics.drift_rate_pct}%
+                    </h2>
+                    <span className={`px-3 py-1 text-label-sm font-semibold rounded-full border ${metrics.status === 'alert' ? 'bg-error/10 text-error border-error/30 animate-pulse' : 'bg-surface-container-low text-on-surface-variant border-outline/30'}`}>
+                      {metrics.status === 'alert' ? 'Requiere Atención' : 'Estable'}
+                    </span>
+                  </div>
+                  <p className={`text-label-sm mb-3 ${metrics.status === 'alert' ? 'text-error font-medium' : 'text-on-surface-variant'}`}>
+                    {metrics.status === 'alert' ? '⚠️ ' : '✅ '}{metrics.message}
+                  </p>
+                  <div className="w-full bg-surface-container-highest rounded-full h-1.5 mb-2">
+                    <div className={`h-full rounded-full ${metrics.status === 'alert' ? 'bg-error' : 'bg-primary'}`} style={{ width: `${Math.min(metrics.drift_rate_pct, 100)}%` }}></div>
+                  </div>
+                  <div className="flex justify-between items-center mt-1">
+                    <p className="text-[12px] font-medium text-on-surface-variant">Nuevos: {metrics.total_new_projects}</p>
+                    <p className="text-[12px] font-medium text-on-surface-variant">Anomalías: {metrics.sse_anomalies_count}</p>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
         </div>
 
