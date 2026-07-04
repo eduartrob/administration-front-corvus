@@ -25,6 +25,7 @@ export default function Clustering() {
   const prevPendingCountRef = useRef<number | null>(null);
   const [toastMsg, setToastMsg] = useState('');
   const [selectedTab, setSelectedTab] = useState<string>('global');
+  const [driftMetrics, setDriftMetrics] = useState<any>(null);
 
   const fetchMaps = async (tab: string) => {
     try {
@@ -56,6 +57,13 @@ export default function Clustering() {
         const countRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/projects-count`);
         if (countRes.data && countRes.data.count !== undefined) {
           setProjectCount(countRes.data.count);
+        }
+        
+        try {
+          const driftRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/drift-metrics`);
+          setDriftMetrics(driftRes.data);
+        } catch (e) {
+          console.warn('Drift metrics not available');
         }
       } catch (error) {
         console.error('Error fetching project count:', error);
@@ -255,7 +263,34 @@ export default function Clustering() {
               <h3 className="text-title-lg font-bold text-on-surface">Mapa de Clusters Semánticos</h3>
               <p className="text-body-md text-on-surface-variant">Distribución de proyectos académicos basada en similitud vectorial.</p>
             </div>
+            </div>
+
+            {/* Monitoreo de Deriva (Drift) */}
+            {driftMetrics && (
+              <div className={`p-6 rounded-3xl ${driftMetrics.status === 'alert' ? 'bg-error-container' : 'bg-surface-container'} flex items-start gap-4 transition-colors`}>
+                <div className={`p-3 rounded-2xl ${driftMetrics.status === 'alert' ? 'bg-error text-on-error' : 'bg-primary text-on-primary'}`}>
+                  <BarChart2 size={24} />
+                </div>
+                <div>
+                  <h3 className={`text-label-lg font-medium ${driftMetrics.status === 'alert' ? 'text-on-error-container' : 'text-on-surface-variant'}`}>
+                    Deriva (Drift Rate)
+                  </h3>
+                  <div className="flex items-baseline gap-2 mt-1">
+                    <span className={`text-display-sm font-bold ${driftMetrics.status === 'alert' ? 'text-on-error-container' : 'text-on-surface'}`}>
+                      {driftMetrics.drift_rate_pct}%
+                    </span>
+                  </div>
+                  <p className={`text-body-sm mt-1 ${driftMetrics.status === 'alert' ? 'text-on-error-container font-medium' : 'text-on-surface-variant'}`}>
+                    {driftMetrics.status === 'alert' ? '⚠️ ' : '✅ '}{driftMetrics.message}
+                  </p>
+                  <p className={`text-label-sm mt-1 opacity-80 ${driftMetrics.status === 'alert' ? 'text-on-error-container' : 'text-on-surface-variant'}`}>
+                    Nuevos proyectos sin clusterizar: {driftMetrics.total_new_projects} (Anomalías: {driftMetrics.sse_anomalies_count})
+                  </p>
+                </div>
+              </div>
+            )}
             
+
             {}
             <div className="flex bg-surface-container-low p-1 rounded-xl border border-outline-variant/50">
               <button 
