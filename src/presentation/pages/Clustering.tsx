@@ -6,10 +6,7 @@ import { Link } from 'react-router-dom';
 import { XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, BarChart, Bar, CartesianGrid } from 'recharts';
 import { API_CONFIG } from '../../application/config/api_config';
 import { ToastNotification } from '../components/molecules/ToastNotification';
-import { useNotifications } from '../../application/contexts/NotificationContext';
-
 export default function Clustering() {
-  const { addNotification } = useNotifications();
   const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d');
   const [projectCount, setProjectCount] = useState<number>(0);
   const [dynamicBarData, setDynamicBarData] = useState<any[]>([]);
