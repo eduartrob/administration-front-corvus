@@ -6,7 +6,8 @@ interface SkeletonProps {
 }
 
 export function Skeleton({ className = '', variant = 'rectangular' }: SkeletonProps) {
-  const baseClass = "animate-pulse bg-surface-container-high/50";
+  // Use outline-variant/30 instead of surface-container-high/50 because outline-variant supports <alpha-value> opacity in Tailwind config
+  const baseClass = "animate-pulse bg-outline-variant/30";
   
   let variantClass = "";
   if (variant === 'circular') {
