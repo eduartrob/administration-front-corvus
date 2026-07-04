@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Activity, Server, Cpu, HardDrive, TerminalSquare, AlertTriangle, CheckCircle, PowerOff } from 'lucide-react';
+import { API_CONFIG } from '../../application/config/api_config';
 
 interface Container {
   id: string;
@@ -37,7 +38,13 @@ export default function SystemMonitor() {
   const fetchContainers = async () => {
     try {
       // Assuming api-gateway is running on 3000 locally
-      const response = await fetch('http://localhost:3000/api/system/containers');
+      const sessionData = localStorage.getItem('corvus_session') || sessionStorage.getItem('corvus_session');
+      const token = sessionData ? JSON.parse(sessionData).token : '';
+      const response = await fetch(`${API_CONFIG.BASE_URL}/system/containers`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       const json = await response.json();
       if (json.success) {
         setContainers(json.data);
@@ -60,7 +67,9 @@ export default function SystemMonitor() {
     if (logsEventSource.current) logsEventSource.current.close();
 
     // Open Stats SSE
-    const sseStats = new EventSource(`http://localhost:3000/api/system/containers/${selectedContainer}/stats`);
+    const sessionData = localStorage.getItem('corvus_session') || sessionStorage.getItem('corvus_session');
+    const token = sessionData ? JSON.parse(sessionData).token : '';
+    const sseStats = new EventSource(`${API_CONFIG.BASE_URL}/system/containers/${selectedContainer}/stats?token=${token}`);
     sseStats.onmessage = (event) => {
       const data = JSON.parse(event.data);
       if (!data.error) setStats(data);
@@ -68,7 +77,7 @@ export default function SystemMonitor() {
     statsEventSource.current = sseStats;
 
     // Open Logs SSE
-    const sseLogs = new EventSource(`http://localhost:3000/api/system/containers/${selectedContainer}/logs`);
+    const sseLogs = new EventSource(`${API_CONFIG.BASE_URL}/system/containers/${selectedContainer}/logs?token=${token}`);
     sseLogs.onmessage = (event) => {
       const data = JSON.parse(event.data);
       if (!data.error) {
