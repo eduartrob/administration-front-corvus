@@ -34,6 +34,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(user);
         if (token) {
           axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+          // Prefetch if we restore a session
+          setTimeout(() => {
+            import('../cache/ClusteringCache').then(({ ClusteringCache }) => {
+              ClusteringCache.prefetchMap('global');
+            });
+          }, 1000);
         }
       } catch (e) {
         console.error("Error parsing session", e);
@@ -83,6 +89,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         sessionStorage.setItem('corvus_session', sessionData);
       }
+
+      // Prefetch global cluster maps in the background
+      setTimeout(() => {
+        import('../cache/ClusteringCache').then(({ ClusteringCache }) => {
+          ClusteringCache.prefetchMap('global');
+        });
+      }, 1000);
+
     } catch (error) {
       throw error;
     } finally {

@@ -26,25 +26,34 @@ export default function Clustering() {
   const [driftMetrics, setDriftMetrics] = useState<any>(null);
 
   const fetchMaps = async (tab: string) => {
-    try {
-      const scatterRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/clusters-2d-html?filter_cluster_id=${tab}`);
-      if (typeof scatterRes.data === 'string') {
-        setHtml2d(scatterRes.data);
+    import('../../application/cache/ClusteringCache').then(async ({ ClusteringCache }) => {
+      // Check cache first
+      const cached = ClusteringCache.getMap(tab);
+      if (cached) {
+        setHtml2d(cached.html2d);
+        setHtml3d(cached.html3d);
+        setIsLoadingMaps(false);
+        // Optionally fetch in background to update cache without showing loader
+        ClusteringCache.prefetchMap(tab).then(newData => {
+          if (newData) {
+            setHtml2d(newData.html2d);
+            setHtml3d(newData.html3d);
+          }
+        });
+        return;
       }
-    } catch (error) {
-      console.error('Error fetching 2D html:', error);
-    }
-
-    try {
-      const htmlRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/clusters-3d?filter_cluster_id=${tab}`);
-      if (typeof htmlRes.data === 'string') {
-        setHtml3d(htmlRes.data);
+      
+      setIsLoadingMaps(true);
+      setHtml2d('');
+      setHtml3d('');
+      
+      const data = await ClusteringCache.prefetchMap(tab);
+      if (data) {
+        setHtml2d(data.html2d);
+        setHtml3d(data.html3d);
       }
-    } catch (error) {
-      console.error('Error fetching 3D html:', error);
-    } finally {
       setIsLoadingMaps(false);
-    }
+    });
   };
 
   useEffect(() => {
