@@ -4,6 +4,7 @@ import { Users, GraduationCap, AlertCircle, ArrowRight } from 'lucide-react';
 import axios from 'axios';
 import { API_CONFIG } from '../../application/config/api_config';
 import { Link } from 'react-router-dom';
+import { Skeleton } from '../components/atoms/Skeleton';
 
 function formatRelativeTime(dateString: string) {
   const date = new Date(dateString);
@@ -122,7 +123,7 @@ export default function Dashboard() {
           <div>
             <p className="text-label-md text-on-surface-variant uppercase tracking-wider mb-1">TOTAL ALUMNOS REGISTRADOS</p>
             <h2 className="text-display-lg font-bold text-on-surface">
-              {isLoading ? '...' : stats.students.toLocaleString()}
+              {isLoading ? <Skeleton variant="text" className="w-16 h-12" /> : stats.students.toLocaleString()}
             </h2>
           </div>
         </div>
@@ -139,7 +140,7 @@ export default function Dashboard() {
           <div>
             <p className="text-label-md text-on-surface-variant uppercase tracking-wider mb-1">PROFESORES ACTIVOS</p>
             <h2 className="text-display-lg font-bold text-on-surface">
-              {isLoading ? '...' : stats.teachers.toLocaleString()}
+              {isLoading ? <Skeleton variant="text" className="w-12 h-12" /> : stats.teachers.toLocaleString()}
             </h2>
           </div>
         </div>
@@ -173,8 +174,20 @@ export default function Dashboard() {
 
       <div className="glass-panel rounded-2xl overflow-hidden">
         {isLoadingActivities ? (
-          <div className="p-8 text-center text-on-surface-variant animate-pulse">
-            Cargando historial...
+          <div className="divide-y divide-outline-variant/50">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="p-4 sm:p-5 flex items-center gap-4">
+                <Skeleton variant="circular" className="w-12 h-12 flex-shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="w-3/4 h-4" />
+                  <Skeleton className="w-1/2 h-3" />
+                </div>
+                <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                  <Skeleton className="w-16 h-3" />
+                  <Skeleton className="w-20 h-5 rounded-full" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : activities.length === 0 ? (
           <div className="p-8 text-center text-on-surface-variant">

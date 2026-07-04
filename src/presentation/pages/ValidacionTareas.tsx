@@ -1,7 +1,17 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Download, Filter, ChevronDown, ChevronLeft, ChevronRight, AlertTriangle, Clock, Calendar } from 'lucide-react';
+import { Skeleton } from '../components/atoms/Skeleton';
 
 export default function ValidacionTareas() {
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Fake network request
+    const timer = setTimeout(() => setIsLoading(false), 1500);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -15,7 +25,7 @@ export default function ValidacionTareas() {
       </div>
 
       <div className="glass-panel rounded-2xl flex flex-col flex-1 overflow-hidden">
-        {}
+        {/* Actions Bar */}
         <div className="p-4 sm:p-6 border-b border-outline-variant/50 flex flex-wrap gap-4 justify-between items-center bg-surface-container-low/30">
           <div className="flex flex-wrap gap-3">
             <button className="flex items-center gap-2 bg-surface-container-lowest border border-outline-variant px-4 py-2 rounded-xl text-on-surface font-label-md hover:bg-surface-container-low transition-colors shadow-sm">
@@ -33,7 +43,7 @@ export default function ValidacionTareas() {
           </button>
         </div>
 
-        {}
+        {/* Table Area */}
         <div className="flex-1 overflow-auto">
           <table className="w-full text-left border-collapse min-w-[800px]">
             <thead className="sticky top-0 bg-surface-container-lowest shadow-[0_1px_0_0_var(--color-outline-variant)]">
@@ -46,7 +56,26 @@ export default function ValidacionTareas() {
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/40 bg-surface-container-lowest">
-              {[
+              {isLoading ? (
+                [...Array(4)].map((_, i) => (
+                  <tr key={i}>
+                    <td className="py-5 px-6">
+                      <Skeleton className="w-3/4 h-5 mb-2" />
+                      <Skeleton className="w-1/2 h-3" />
+                    </td>
+                    <td className="py-5 px-6 flex items-center gap-3">
+                      <Skeleton variant="circular" className="w-10 h-10" />
+                      <div>
+                        <Skeleton className="w-24 h-4 mb-2" />
+                        <Skeleton className="w-16 h-3" />
+                      </div>
+                    </td>
+                    <td className="py-5 px-6"><Skeleton className="w-24 h-4" /></td>
+                    <td className="py-5 px-6"><Skeleton className="w-16 h-6 rounded-full" /></td>
+                    <td className="py-5 px-6"><div className="flex justify-end"><Skeleton className="w-20 h-8 rounded-lg" /></div></td>
+                  </tr>
+                ))
+              ) : [
                 { 
                   task: 'Prototipo de Alta Fidelidad', subject: 'Diseño de Interfaces',
                   student: 'Ana García Ríos', id: 'ID: 2021045', avatar: 'https://i.pravatar.cc/150?u=a',

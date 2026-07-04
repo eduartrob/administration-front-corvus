@@ -5,9 +5,12 @@ import { Play, Database, Compass, BarChart2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, BarChart, Bar, CartesianGrid } from 'recharts';
 import { API_CONFIG } from '../../application/config/api_config';
-import { ToastNotification } from '../components/molecules/ToastNotification';
+import { Skeleton } from '../components/atoms/Skeleton';
+
 export default function Clustering() {
   const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d');
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
+  const [isLoadingMaps, setIsLoadingMaps] = useState(true);
   const [projectCount, setProjectCount] = useState<number>(0);
   const [dynamicBarData, setDynamicBarData] = useState<any[]>([]);
   const [recentProjects, setRecentProjects] = useState<any[]>([]);
@@ -38,6 +41,8 @@ export default function Clustering() {
       }
     } catch (error) {
       console.error('Error fetching 3D html:', error);
+    } finally {
+      setIsLoadingMaps(false);
     }
   };
 
@@ -117,6 +122,8 @@ export default function Clustering() {
         }
       } catch (error) {
         console.error('Error fetching cluster stats:', error);
+      } finally {
+        setIsLoadingStats(false);
       }
     };
 
@@ -178,17 +185,16 @@ export default function Clustering() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        {}
         <div className="flex flex-col gap-6">
           <div className="glass-panel p-6 rounded-2xl flex items-center justify-between">
             <div>
               <p className="text-body-md text-on-surface-variant mb-2">Proyectos Agrupados<br/>(En Clústeres)</p>
               <div className="flex items-end gap-3">
                 <h2 className="text-display-lg font-bold text-on-surface leading-none">
-                  {clusteredCount.toLocaleString()}
+                  {isLoadingStats ? <Skeleton variant="text" className="w-20 h-10" /> : clusteredCount.toLocaleString()}
                 </h2>
                 <span className="text-primary font-semibold text-label-md mb-2 flex items-center">
-                  Total BD: {projectCount}
+                  Total BD: {isLoadingStats ? <Skeleton variant="text" className="w-8 h-4 ml-2" /> : projectCount}
                 </span>
               </div>
             </div>
@@ -197,9 +203,6 @@ export default function Clustering() {
             </div>
           </div>
 
-
-
-          {}
           <div className="glass-panel p-6 rounded-2xl flex flex-col justify-between border border-error-container/30 bg-error-container/5 hover:bg-error-container/10 transition-colors">
             <div className="flex justify-between items-start mb-4">
               <div className="p-3 bg-error-container text-error rounded-xl shadow-sm">
@@ -212,14 +215,18 @@ export default function Clustering() {
             <div>
               <p className="text-body-md text-on-surface-variant mb-1">Océanos Azules</p>
               <div className="flex items-baseline gap-2">
-                <h2 className="text-display-lg font-bold text-on-surface leading-none">{blueOceansCount}</h2>
+                <h2 className="text-display-lg font-bold text-on-surface leading-none">
+                  {isLoadingStats ? <Skeleton variant="text" className="w-12 h-10" /> : blueOceansCount}
+                </h2>
                 <span className="text-error font-medium text-label-sm">hallazgos</span>
               </div>
             </div>
           </div>
 
-          {/* Monitoreo de Deriva (Drift) */}
           {(() => {
+            if (isLoadingStats) {
+              return <div className="glass-panel p-6 rounded-2xl h-48 flex items-center justify-center"><Skeleton className="w-full h-full" /></div>;
+            }
             const metrics = driftMetrics || {
               status: 'normal',
               drift_rate_pct: 0,
@@ -238,7 +245,7 @@ export default function Clustering() {
                 <div>
                   <div className="flex items-center justify-between mb-4">
                     <h2 className={`text-display-lg font-bold leading-none ${metrics.status === 'alert' ? 'text-error' : 'text-on-surface'}`}>
-                      {metrics.drift_rate_pct}%
+                      {`${metrics.drift_rate_pct}%`}
                     </h2>
                     <span className={`px-3 py-1 text-label-sm font-semibold rounded-full border ${metrics.status === 'alert' ? 'bg-error/10 text-error border-error/30 animate-pulse' : 'bg-surface-container-low text-on-surface-variant border-outline/30'}`}>
                       {metrics.status === 'alert' ? 'Requiere Atención' : 'Estable'}
@@ -258,21 +265,14 @@ export default function Clustering() {
               </div>
             );
           })()}
-
         </div>
 
-        {}
         <div className="lg:col-span-2 glass-panel p-6 rounded-2xl flex flex-col">
           <div className="flex justify-between items-start mb-6">
             <div>
               <h3 className="text-title-lg font-bold text-on-surface">Mapa de Clusters Semánticos</h3>
               <p className="text-body-md text-on-surface-variant">Distribución de proyectos académicos basada en similitud vectorial.</p>
             </div>
-
-
-
-
-            {}
             <div className="flex bg-surface-container-low p-1 rounded-xl border border-outline-variant/50">
               <button 
                 onClick={() => setViewMode('2d')}
@@ -289,7 +289,6 @@ export default function Clustering() {
             </div>
           </div>
 
-          {}
           <div className="flex overflow-x-auto gap-2 pb-4 mb-2 scrollbar-thin scrollbar-thumb-outline-variant scrollbar-track-transparent">
             <button
               onClick={() => setSelectedTab('global')}
@@ -314,18 +313,20 @@ export default function Clustering() {
             </button>
           </div>
 
-          <div className="flex-1 min-h-[300px] bg-surface-container-lowest rounded-xl border border-outline-variant/30 p-2 overflow-hidden relative">
-            {viewMode === '2d' ? (
+          <div className="flex-1 min-h-[400px] bg-surface-container-lowest rounded-xl border border-outline-variant/30 p-2 overflow-hidden relative">
+            {isLoadingMaps ? (
+              <Skeleton className="w-full h-full min-h-[400px]" />
+            ) : viewMode === '2d' ? (
               <iframe 
                 srcDoc={html2d || "<html><body><div style='display:flex;justify-content:center;align-items:center;height:100%;font-family:sans-serif;color:gray'>Cargando Mapa 2D interactivo...</div></body></html>"} 
-                className="w-full h-full border-0 rounded-xl"
+                className="w-full h-full border-0 rounded-xl min-h-[400px]"
                 title="2D Cluster Map"
                 sandbox="allow-scripts allow-same-origin"
               />
             ) : (
               <iframe 
                 srcDoc={html3d || "<html><body><div style='display:flex;justify-content:center;align-items:center;height:100%;font-family:sans-serif;color:gray'>Cargando Mapa 3D interactivo...</div></body></html>"} 
-                className="w-full h-full border-0"
+                className="w-full h-full border-0 min-h-[400px]"
                 title="3D Cluster Map"
                 sandbox="allow-scripts allow-same-origin"
               />
@@ -335,28 +336,33 @@ export default function Clustering() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {}
         <div className="glass-panel p-6 rounded-2xl">
           <h3 className="text-title-lg font-bold text-on-surface mb-1">Proyectos por Categoría</h3>
           <p className="text-body-md text-on-surface-variant mb-6">Volumen de trabajos clasificados automáticamente.</p>
           <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={dynamicBarData} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#757684' }} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#757684' }} />
-                <Tooltip cursor={{ fill: '#f8f9ff' }} contentStyle={{ borderRadius: '8px', border: '1px solid #c4c5d5' }} />
-                <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                  {dynamicBarData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color || (index === 0 ? '#00288e' : index === 1 ? '#3755c3' : '#c4c5d5')} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+            {isLoadingStats ? (
+              <Skeleton className="w-full h-full" />
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={dynamicBarData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
+                  <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
+                  <Tooltip 
+                    cursor={{fill: '#f1f5f9'}}
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                  />
+                  <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                    {dynamicBarData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color || '#3b82f6'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
 
-        {}
         <div className="glass-panel p-6 rounded-2xl flex flex-col">
           <div className="flex justify-between items-center mb-6">
             <div>
