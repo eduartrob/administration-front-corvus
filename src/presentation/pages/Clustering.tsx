@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Play, Database, FileClock, Compass } from 'lucide-react';
+import { Play, Database, FileClock, Compass, BarChart2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, BarChart, Bar, CartesianGrid } from 'recharts';
 import { API_CONFIG } from '../../application/config/api_config';
