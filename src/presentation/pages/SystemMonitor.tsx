@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Activity, Server, Cpu, HardDrive, TerminalSquare, AlertTriangle, CheckCircle, PowerOff } from 'lucide-react';
 import { API_CONFIG } from '../../application/config/api_config';
+import { Skeleton } from '../components/atoms/Skeleton';
 
 interface Container {
   id: string;
@@ -23,6 +24,7 @@ export default function SystemMonitor() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [logs, setLogs] = useState<{type: string, line: string}[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   
   const statsEventSource = useRef<EventSource | null>(null);
   const logsEventSource = useRef<EventSource | null>(null);
@@ -52,6 +54,8 @@ export default function SystemMonitor() {
       }
     } catch (err) {
       setError('No se pudo conectar con el API Gateway. ¿Están los contenedores encendidos?');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -165,25 +169,37 @@ export default function SystemMonitor() {
             </span>
           </div>
           <div className="overflow-y-auto flex-1 p-2 space-y-1">
-            {containers.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => setSelectedContainer(c.id)}
-                className={`w-full text-left p-3 rounded-lg flex items-center justify-between transition-colors ${
-                  selectedContainer === c.id 
-                    ? 'bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/30' 
-                    : 'hover:bg-slate-50 dark:hover:bg-slate-700/50 border border-transparent'
-                }`}
-              >
-                <div className="truncate pr-2">
-                  <p className="font-medium text-sm text-slate-900 dark:text-slate-200 truncate">{c.name}</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{c.image.split('/').pop()}</p>
+            {isLoading && containers.length === 0 ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="w-full p-3 flex items-center justify-between">
+                  <div className="space-y-2 flex-1">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-1/2" />
+                  </div>
+                  <Skeleton variant="circular" className="w-8 h-8 ml-4" />
                 </div>
-                <div className={`p-1.5 rounded-full ${getStatusColor(c.state)}`}>
-                  {c.state === 'running' ? <CheckCircle className="w-4 h-4" /> : <PowerOff className="w-4 h-4" />}
-                </div>
-              </button>
-            ))}
+              ))
+            ) : (
+              containers.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => setSelectedContainer(c.id)}
+                  className={`w-full text-left p-3 rounded-lg flex items-center justify-between transition-colors ${
+                    selectedContainer === c.id 
+                      ? 'bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/30' 
+                      : 'hover:bg-slate-50 dark:hover:bg-slate-700/50 border border-transparent'
+                  }`}
+                >
+                  <div className="truncate pr-2">
+                    <p className="font-medium text-sm text-slate-900 dark:text-slate-200 truncate">{c.name}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{c.image.split('/').pop()}</p>
+                  </div>
+                  <div className={`p-1.5 rounded-full ${getStatusColor(c.state)}`}>
+                    {c.state === 'running' ? <CheckCircle className="w-4 h-4" /> : <PowerOff className="w-4 h-4" />}
+                  </div>
+                </button>
+              ))
+            )}
           </div>
         </div>
 
