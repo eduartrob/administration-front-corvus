@@ -263,7 +263,7 @@ export default function Clustering() {
               <h3 className="text-title-lg font-bold text-on-surface">Mapa de Clusters Semánticos</h3>
               <p className="text-body-md text-on-surface-variant">Distribución de proyectos académicos basada en similitud vectorial.</p>
             </div>
-            </div>
+
 
             {/* Monitoreo de Deriva (Drift) */}
             {driftMetrics && (
