@@ -42,6 +42,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsInitializing(false);
   }, []);
 
+  useEffect(() => {
+    const interceptor = axios.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response && error.response.status === 401) {
+          // Token expirado o inválido: forzar cierre de sesión
+          setUser(null);
+          localStorage.removeItem('corvus_session');
+          sessionStorage.removeItem('corvus_session');
+          delete axios.defaults.headers.common['Authorization'];
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    return () => {
+      axios.interceptors.response.eject(interceptor);
+    };
+  }, []);
+
   const login = async (email: string, password: string, rememberMe: boolean) => {
     setIsLoading(true);
     try {
