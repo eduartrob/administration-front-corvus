@@ -254,6 +254,36 @@ export default function Clustering() {
               </div>
             </div>
           </div>
+
+          {/* Monitoreo de Deriva (Drift) */}
+          {driftMetrics && (
+            <div className={`glass-panel p-6 rounded-2xl flex flex-col justify-between transition-colors ${driftMetrics.status === 'alert' ? 'border border-error/40 bg-error/5 hover:bg-error/10' : ''}`}>
+              <div className="flex justify-between items-start mb-4">
+                <div className={`p-3 rounded-xl shadow-sm ${driftMetrics.status === 'alert' ? 'bg-error text-on-error' : 'bg-primary-container text-primary'}`}>
+                  <BarChart2 className="w-6 h-6" />
+                </div>
+                <span className={`px-3 py-1 text-label-sm font-semibold rounded-full border ${driftMetrics.status === 'alert' ? 'bg-error/10 text-error border-error/30 animate-pulse' : 'bg-surface-container-low text-on-surface-variant border-outline/30'}`}>
+                  {driftMetrics.status === 'alert' ? 'Requiere Atención' : 'Estable'}
+                </span>
+              </div>
+              <div>
+                <p className="text-body-md text-on-surface-variant mb-1">Tasa de Deriva (Drift)</p>
+                <div className="flex items-baseline gap-2 mb-2">
+                  <h2 className={`text-display-lg font-bold leading-none ${driftMetrics.status === 'alert' ? 'text-error' : 'text-on-surface'}`}>
+                    {driftMetrics.drift_rate_pct}%
+                  </h2>
+                </div>
+                <p className={`text-label-sm ${driftMetrics.status === 'alert' ? 'text-error font-medium' : 'text-on-surface-variant'}`}>
+                  {driftMetrics.status === 'alert' ? '⚠️ ' : '✅ '}{driftMetrics.message}
+                </p>
+                <div className="mt-3 pt-3 border-t border-outline-variant/30 flex justify-between">
+                  <span className="text-[11px] font-medium text-on-surface-variant uppercase tracking-wider">Nuevos: {driftMetrics.total_new_projects}</span>
+                  <span className="text-[11px] font-medium text-on-surface-variant uppercase tracking-wider">Anomalías: {driftMetrics.sse_anomalies_count}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
         </div>
 
         {}
@@ -265,31 +295,7 @@ export default function Clustering() {
             </div>
 
 
-            {/* Monitoreo de Deriva (Drift) */}
-            {driftMetrics && (
-              <div className={`p-6 rounded-3xl ${driftMetrics.status === 'alert' ? 'bg-error-container' : 'bg-surface-container'} flex items-start gap-4 transition-colors`}>
-                <div className={`p-3 rounded-2xl ${driftMetrics.status === 'alert' ? 'bg-error text-on-error' : 'bg-primary text-on-primary'}`}>
-                  <BarChart2 size={24} />
-                </div>
-                <div>
-                  <h3 className={`text-label-lg font-medium ${driftMetrics.status === 'alert' ? 'text-on-error-container' : 'text-on-surface-variant'}`}>
-                    Deriva (Drift Rate)
-                  </h3>
-                  <div className="flex items-baseline gap-2 mt-1">
-                    <span className={`text-display-sm font-bold ${driftMetrics.status === 'alert' ? 'text-on-error-container' : 'text-on-surface'}`}>
-                      {driftMetrics.drift_rate_pct}%
-                    </span>
-                  </div>
-                  <p className={`text-body-sm mt-1 ${driftMetrics.status === 'alert' ? 'text-on-error-container font-medium' : 'text-on-surface-variant'}`}>
-                    {driftMetrics.status === 'alert' ? '⚠️ ' : '✅ '}{driftMetrics.message}
-                  </p>
-                  <p className={`text-label-sm mt-1 opacity-80 ${driftMetrics.status === 'alert' ? 'text-on-error-container' : 'text-on-surface-variant'}`}>
-                    Nuevos proyectos sin clusterizar: {driftMetrics.total_new_projects} (Anomalías: {driftMetrics.sse_anomalies_count})
-                  </p>
-                </div>
-              </div>
-            )}
-            
+
 
             {}
             <div className="flex bg-surface-container-low p-1 rounded-xl border border-outline-variant/50">
