@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Save, FileText, Settings, Sliders, CheckCircle } from 'lucide-react';
+import { X, Save, FileText, Settings, Sliders, CheckCircle, Edit2, Trash2 } from 'lucide-react';
 import axios from 'axios';
 import { API_CONFIG } from '../../../application/config/api_config';
 
@@ -22,34 +22,48 @@ interface SettingsModalProps {
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<'engine' | 'appearance'>('engine');
   const [allowedExtensions, setAllowedExtensions] = useState<string[]>([]);
-  const [visibleExtensions, setVisibleExtensions] = useState<string[]>(['.pdf', '.md', '.txt']);
   const [llmProvider, setLlmProvider] = useState<'ollama' | 'groq'>('ollama');
+  const [driveFolderId, setDriveFolderId] = useState<string>('');
+  const [savedDriveFolderId, setSavedDriveFolderId] = useState<string>('');
+  const [isEditingDriveId, setIsEditingDriveId] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<{text: string, type: 'success' | 'error'} | null>(null);
+  const [scanMessage, setScanMessage] = useState<{text: string, type: 'success' | 'error'} | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       fetchConfig();
+      fetchConfig();
       setMessage(null);
+      setScanMessage(null);
+      setIsEditingDriveId(false);
     }
   }, [isOpen]);
 
   const fetchConfig = async () => {
     setIsLoading(true);
     try {
-      const res = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/config`);
+      const res = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/config`, {
+        params: { t: Date.now() }
+      });
       if (res.data) {
         if (res.data.allowed_extensions) {
-          setAllowedExtensions(res.data.allowed_extensions);
-          setVisibleExtensions(prev => Array.from(new Set([...prev, ...res.data.allowed_extensions])));
+          const validExts = res.data.allowed_extensions.filter((e: string) => e && e.trim().length > 0);
+          setAllowedExtensions(validExts);
         }
         if (res.data.llm_provider) setLlmProvider(res.data.llm_provider);
+        if (res.data.drive_folder_id) {
+          setDriveFolderId(res.data.drive_folder_id);
+          setSavedDriveFolderId(res.data.drive_folder_id);
+        } else {
+          setSavedDriveFolderId('');
+        }
       }
     } catch (error) {
       console.error('Error fetching config', error);
       setAllowedExtensions(['.pdf', '.md', '.txt']);
-      setVisibleExtensions(['.pdf', '.md', '.txt']);
       setLlmProvider('ollama');
     } finally {
       setIsLoading(false);
@@ -62,8 +76,11 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     try {
       await axios.post(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/config`, {
         allowed_extensions: allowedExtensions,
-        llm_provider: llmProvider
+        llm_provider: llmProvider,
+        drive_folder_id: driveFolderId
       });
+      setSavedDriveFolderId(driveFolderId);
+      setIsEditingDriveId(false);
       setMessage({ text: 'Configuración actualizada con éxito.', type: 'success' });
       setTimeout(() => setMessage(null), 3000);
     } catch (error) {
@@ -106,20 +123,31 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isChecked ? 'translate-x-6' : 'translate-x-1'}`}
             />
           </button>
-          
-          <button
-            onClick={() => {
-              setAllowedExtensions(prev => prev.filter(e => e !== ext));
-              setVisibleExtensions(prev => prev.filter(e => e !== ext));
-            }}
-            className="p-1 text-on-surface-variant hover:text-error hover:bg-error-container rounded-full transition-colors"
-            title="Eliminar de la lista"
-          >
-            <X className="w-4 h-4" />
-          </button>
         </div>
       </div>
     );
+  };
+
+  const handleScanDrive = async () => {
+    if (!driveFolderId) {
+      setScanMessage({ text: 'Por favor ingresa el ID de la carpeta primero e intenta guardar.', type: 'error' });
+      return;
+    }
+    setIsScanning(true);
+    setScanMessage(null);
+    try {
+      await axios.post(`${API_CONFIG.BASE_URL}/clustering/integrator/process-folder`, {
+        folder_id: driveFolderId,
+        access_token: "service-account",
+        user_id: "admin"
+      });
+      setScanMessage({ text: 'Escaneo iniciado en segundo plano. Cierra esta ventana y revisa los proyectos pendientes.', type: 'success' });
+    } catch (error) {
+      console.error('Error al iniciar el escaneo de Drive', error);
+      setScanMessage({ text: 'Error al iniciar el escaneo de Drive.', type: 'error' });
+    } finally {
+      setIsScanning(false);
+    }
   };
 
   return (
@@ -188,33 +216,81 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                       <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin"></div>
                     </div>
                   ) : (
-                    <div className="space-y-4">
-                      <h4 className="text-body-lg font-bold text-on-surface mt-6 mb-2">Extensiones de Archivo</h4>
+                      <div className="space-y-4">
+                      <h4 className="text-body-lg font-bold text-on-surface mt-6 mb-2">Extensiones de Archivo (Soportadas Oficialmente)</h4>
                       
-                      {visibleExtensions.map(ext => {
-                        const info = ALL_SUPPORTED_EXTENSIONS.find(e => e.ext === ext) || { ext, label: `Archivo ${ext}`, desc: 'Extensión personalizada' };
-                        return <ExtensionToggle key={ext} ext={info.ext} label={info.label} desc={info.desc} />;
-                      })}
+                      {ALL_SUPPORTED_EXTENSIONS.map(info => (
+                        <ExtensionToggle key={info.ext} ext={info.ext} label={info.label} desc={info.desc} />
+                      ))}
 
-                      <div className="mt-4 p-4 rounded-xl border border-outline-variant/50 border-dashed flex gap-2 bg-surface-container-lowest">
-                        <select 
-                          className="flex-1 bg-surface border border-outline-variant rounded-lg px-3 py-2 text-body-md text-on-surface focus:border-primary focus:outline-none"
-                          onChange={(e) => {
-                            if (e.target.value) {
-                              setVisibleExtensions(prev => Array.from(new Set([...prev, e.target.value])));
-                              setAllowedExtensions(prev => Array.from(new Set([...prev, e.target.value])));
-                              e.target.value = '';
-                            }
-                          }}
-                          defaultValue=""
-                        >
-                          <option value="" disabled>+ Añadir tipo de documento soportado...</option>
-                          {ALL_SUPPORTED_EXTENSIONS.filter(e => !visibleExtensions.includes(e.ext)).map(e => (
-                            <option key={e.ext} value={e.ext}>{e.label} ({e.ext})</option>
-                          ))}
-                        </select>
+                      <h4 className="text-body-lg font-bold text-on-surface mt-8 mb-2 border-t border-outline-variant/50 pt-6">Google Drive (Cuenta de Servicio)</h4>
+                      <p className="text-body-sm text-on-surface-variant mb-4">Ingresa el ID de la carpeta institucional donde se guardan los proyectos en formato PDF.</p>
+                      
+                      <div className="flex gap-2 items-end">
+                        <div className="flex-1">
+                          <label className="block text-label-md font-bold text-on-surface-variant mb-1">Folder ID</label>
+                          <input 
+                            type="text" 
+                            value={driveFolderId}
+                            onChange={(e) => setDriveFolderId(e.target.value)}
+                            disabled={!!savedDriveFolderId && !isEditingDriveId}
+                            placeholder="Ej. 1A2b3C4d5E6f7G8h9I0j..." 
+                            className={`w-full bg-surface-container-lowest border border-outline-variant/50 rounded-xl px-4 py-3 text-body-md text-on-surface focus:outline-none transition-all ${!!savedDriveFolderId && !isEditingDriveId ? 'opacity-60 cursor-not-allowed' : 'focus:border-primary focus:ring-1 focus:ring-primary'}`}
+                          />
+                        </div>
+                        {!!savedDriveFolderId && !isEditingDriveId ? (
+                          <>
+                            <button
+                              title="Modificar ID"
+                              onClick={() => setIsEditingDriveId(true)}
+                              className="flex items-center justify-center h-12 w-12 rounded-xl transition-colors bg-surface-container hover:bg-surface-container-highest text-on-surface-variant border border-outline-variant/30"
+                            >
+                              <Edit2 className="w-5 h-5" />
+                            </button>
+                            <button
+                              title="Borrar ID"
+                              onClick={() => {
+                                setDriveFolderId('');
+                                setIsEditingDriveId(true);
+                              }}
+                              className="flex items-center justify-center h-12 w-12 rounded-xl transition-colors bg-error-container/30 hover:bg-error-container/60 text-error border border-error/20"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                            <button 
+                              onClick={handleScanDrive}
+                              disabled={isScanning}
+                              className={`flex items-center justify-center h-12 px-5 ml-2 rounded-xl font-label-md transition-colors ${isScanning ? 'bg-surface-variant text-on-surface-variant cursor-not-allowed' : 'bg-secondary text-white hover:bg-secondary/90 shadow-sm'}`}
+                            >
+                              {isScanning ? (
+                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                              ) : (
+                                'Escanear Drive'
+                              )}
+                            </button>
+                          </>
+                        ) : (
+                          <button 
+                            onClick={handleScanDrive}
+                            disabled={isScanning || !driveFolderId || (isEditingDriveId && driveFolderId !== savedDriveFolderId)}
+                            title={isEditingDriveId && driveFolderId !== savedDriveFolderId ? "Guarda los cambios primero" : ""}
+                            className={`flex items-center justify-center h-12 px-6 ml-2 rounded-xl font-label-md transition-colors ${isScanning || !driveFolderId || (isEditingDriveId && driveFolderId !== savedDriveFolderId) ? 'bg-surface-variant text-on-surface-variant cursor-not-allowed' : 'bg-secondary text-white hover:bg-secondary/90 shadow-sm'}`}
+                          >
+                            {isScanning ? (
+                              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                            ) : (
+                              'Escanear Drive'
+                            )}
+                          </button>
+                        )}
                       </div>
                       
+                      {scanMessage && (
+                        <div className={`mt-3 p-3 rounded-xl text-body-sm font-medium ${scanMessage.type === 'success' ? 'bg-primary-container text-primary' : 'bg-error-container text-error'}`}>
+                          {scanMessage.text}
+                        </div>
+                      )}
+
                       <h4 className="text-body-lg font-bold text-on-surface mt-8 mb-2 border-t border-outline-variant/50 pt-6">Proveedor de Inteligencia Artificial</h4>
                       <p className="text-body-sm text-on-surface-variant mb-4">Selecciona el motor principal de IA. Groq ofrece inferencia ultra-rápida (&#60;3s), mientras Ollama garantiza 100% privacidad ejecutándose localmente (&#126;40s). Si Groq falla, el sistema usará Ollama automáticamente como respaldo (Failover).</p>
                       

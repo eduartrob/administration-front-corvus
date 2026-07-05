@@ -1,68 +1,83 @@
 import { motion } from 'framer-motion';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Play, Database, FileClock, Compass } from 'lucide-react';
+import { Play, Database, Compass, BarChart2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { ScatterChart, Scatter, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, BarChart, Bar, CartesianGrid, Legend } from 'recharts';
+import { XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, BarChart, Bar, CartesianGrid } from 'recharts';
 import { API_CONFIG } from '../../application/config/api_config';
-// -# el scatterdata inicializa vacio ya que debe venir del backend
-const CLUSTER_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
-
-const CustomScatterShape = (props: any) => {
-  const { cx, cy, fill, payload } = props;
-  const isBlueOcean = payload.label === -1;
-  const size = isBlueOcean ? 16 : 14;
-
-  if (isBlueOcean) {
-    return (
-      <g>
-        <path
-          d={`M ${cx} ${cy - size} L ${cx + size * 0.3} ${cy - size * 0.3} L ${cx + size} ${cy - size * 0.3} L ${cx + size * 0.4} ${cy + size * 0.2} L ${cx + size * 0.6} ${cy + size} L ${cx} ${cy + size * 0.5} L ${cx - size * 0.6} ${cy + size} L ${cx - size * 0.4} ${cy + size * 0.2} L ${cx - size} ${cy - size * 0.3} L ${cx - size * 0.3} ${cy - size * 0.3} Z`}
-          fill="#ef4444"
-          stroke="#7f1d1d"
-          strokeWidth={1}
-        />
-        <text x={cx} y={cy} dy={3} textAnchor="middle" fill="#ffffff" fontSize={10} fontWeight="bold">
-          {payload.num}
-        </text>
-      </g>
-    );
-  }
-
-  return (
-    <g>
-      <circle cx={cx} cy={cy} r={size} fill={fill} stroke="#ffffff" strokeWidth={1.5} opacity={0.9} />
-      <text x={cx} y={cy} dy={3.5} textAnchor="middle" fill="#ffffff" fontSize={10} fontWeight="bold">
-        {payload.num}
-      </text>
-    </g>
-  );
-};
+import { ToastNotification } from '../components/molecules/ToastNotification';
+import { Skeleton } from '../components/atoms/Skeleton';
 
 export default function Clustering() {
   const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d');
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
+  const [isLoadingMaps, setIsLoadingMaps] = useState(true);
   const [projectCount, setProjectCount] = useState<number>(0);
   const [dynamicBarData, setDynamicBarData] = useState<any[]>([]);
-  const [scatterData, setScatterData] = useState<any[]>([]); 
   const [recentProjects, setRecentProjects] = useState<any[]>([]);
   const [isExecuting, setIsExecuting] = useState(false);
   const [executeMsg, setExecuteMsg] = useState('');
   const [html2d, setHtml2d] = useState<string>('');
   const [html3d, setHtml3d] = useState<string>('');
   const [blueOceansCount, setBlueOceansCount] = useState<number>(0);
+  const isExecutingRef = useRef(false);
+  const [toastMsg, setToastMsg] = useState('');
+  const [selectedTab, setSelectedTab] = useState<string>('global');
+  const [driftMetrics, setDriftMetrics] = useState<any>(null);
+
+  const fetchMaps = async (tab: string) => {
+    import('../../application/cache/ClusteringCache').then(async ({ ClusteringCache }) => {
+      // Check cache first
+      const cached = ClusteringCache.getMap(tab);
+      if (cached) {
+        setHtml2d(cached.html2d);
+        setHtml3d(cached.html3d);
+        setIsLoadingMaps(false);
+        // Optionally fetch in background to update cache without showing loader
+        ClusteringCache.prefetchMap(tab).then(newData => {
+          if (newData) {
+            setHtml2d(newData.html2d);
+            setHtml3d(newData.html3d);
+          }
+        });
+        return;
+      }
+      
+      setIsLoadingMaps(true);
+      setHtml2d('');
+      setHtml3d('');
+      
+      const data = await ClusteringCache.prefetchMap(tab);
+      if (data) {
+        setHtml2d(data.html2d);
+        setHtml3d(data.html3d);
+      }
+      setIsLoadingMaps(false);
+    });
+  };
 
   useEffect(() => {
-    const fetchClusteringData = async () => {
+    fetchMaps(selectedTab);
+  }, [selectedTab]);
+
+  useEffect(() => {
+    const fetchStats = async () => {
       try {
         const countRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/projects-count`);
         if (countRes.data && countRes.data.count !== undefined) {
           setProjectCount(countRes.data.count);
         }
+        
+        try {
+          const driftRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/drift-metrics`);
+          setDriftMetrics(driftRes.data);
+        } catch (e) {
+          console.warn('Drift metrics not available');
+        }
       } catch (error) {
         console.error('Error fetching project count:', error);
       }
 
-      
       try {
         const recentRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/recent-projects?limit=5`);
         if (Array.isArray(recentRes.data)) {
@@ -74,10 +89,30 @@ export default function Clustering() {
       
       try {
         const statsRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/clusters-stats`);
+        if (statsRes.data && statsRes.data.is_clustering_running !== undefined) {
+           const wasExecuting = isExecutingRef.current;
+           const isNowExecuting = statsRes.data.is_clustering_running;
+           
+           setIsExecuting(isNowExecuting);
+           isExecutingRef.current = isNowExecuting;
+
+           if (statsRes.data.last_error && !isNowExecuting) {
+             setExecuteMsg(`Fallo en el servidor: ${statsRes.data.last_error}`);
+           }
+
+           // Si acaba de terminar de ejecutarse, actualizamos también los mapas
+           if (wasExecuting === true && isNowExecuting === false) {
+             if (!statsRes.data.last_error) {
+               setSelectedTab('global');
+               fetchMaps('global');
+             }
+           }
+        }
         if (statsRes.data && statsRes.data.clusters_detail) {
           const formattedData = statsRes.data.clusters_detail.map((c: any) => ({
             name: c.cluster_name || `Clúster ${c.cluster_id}`,
-            value: c.project_count
+            value: c.project_count,
+            cluster_id: c.cluster_id
           }));
           setDynamicBarData(formattedData);
         }
@@ -97,31 +132,15 @@ export default function Clustering() {
         }
       } catch (error) {
         console.error('Error fetching cluster stats:', error);
-      }
-
-      try {
-        const scatterRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/clusters-2d-html`);
-        if (typeof scatterRes.data === 'string') {
-          setHtml2d(scatterRes.data);
-        }
-      } catch (error) {
-        console.error('Error fetching 2D html:', error);
-      }
-
-      try {
-        const htmlRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/clusters-3d`);
-        if (typeof htmlRes.data === 'string') {
-          setHtml3d(htmlRes.data);
-        }
-      } catch (error) {
-        console.error('Error fetching 3D html:', error);
+      } finally {
+        setIsLoadingStats(false);
       }
     };
 
-    fetchClusteringData();
-
-    // -# configurar polling cada 10 segundos para dar la sensacion de tiempo real
-    const intervalId = setInterval(fetchClusteringData, 10000);
+    fetchStats();
+    
+    // -# Configurar polling cada 10 segundos SOLO para las estadísticas
+    const intervalId = setInterval(fetchStats, 10000);
 
     return () => clearInterval(intervalId);
   }, []);
@@ -135,15 +154,13 @@ export default function Clustering() {
     } catch (error) {
       console.error(error);
       setExecuteMsg('Error al iniciar clustering');
-    } finally {
       setIsExecuting(false);
+    } finally {
       setTimeout(() => setExecuteMsg(''), 6000);
     }
   };
 
   const clusteredCount = dynamicBarData.reduce((acc, curr) => acc + (curr.value || 0), 0) + blueOceansCount;
-  const pendingClustering = Math.max(0, projectCount - clusteredCount);
-  const pendingPercentage = projectCount > 0 ? (pendingClustering / projectCount) * 100 : 0;
 
   return (
     <motion.div
@@ -178,17 +195,16 @@ export default function Clustering() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        {}
         <div className="flex flex-col gap-6">
           <div className="glass-panel p-6 rounded-2xl flex items-center justify-between">
             <div>
               <p className="text-body-md text-on-surface-variant mb-2">Proyectos Agrupados<br/>(En Clústeres)</p>
               <div className="flex items-end gap-3">
                 <h2 className="text-display-lg font-bold text-on-surface leading-none">
-                  {clusteredCount.toLocaleString()}
+                  {isLoadingStats ? <Skeleton variant="text" className="w-20 h-10" /> : clusteredCount.toLocaleString()}
                 </h2>
                 <span className="text-primary font-semibold text-label-md mb-2 flex items-center">
-                  Total BD: {projectCount}
+                  Total BD: {isLoadingStats ? <Skeleton variant="text" className="w-8 h-4 ml-2" /> : projectCount}
                 </span>
               </div>
             </div>
@@ -197,22 +213,6 @@ export default function Clustering() {
             </div>
           </div>
 
-          <div className="glass-panel p-6 rounded-2xl relative overflow-hidden">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-body-md text-on-surface-variant">Nuevos Proyectos<br/>(Pendientes)</p>
-              <div className="w-12 h-12 bg-secondary-container/30 rounded-xl flex items-center justify-center text-secondary border border-secondary/20">
-                <FileClock className="w-6 h-6" />
-              </div>
-            </div>
-            <h2 className="text-display-lg font-bold text-on-surface mb-4 leading-none">{pendingClustering}</h2>
-            
-            <div className="w-full bg-surface-container-highest rounded-full h-1.5 mb-2">
-              <div className="bg-secondary h-full rounded-full" style={{ width: `${pendingPercentage}%` }}></div>
-            </div>
-            <p className="text-[12px] font-medium text-on-surface-variant text-right">{pendingPercentage.toFixed(1)}% del lote actual</p>
-          </div>
-
-          {}
           <div className="glass-panel p-6 rounded-2xl flex flex-col justify-between border border-error-container/30 bg-error-container/5 hover:bg-error-container/10 transition-colors">
             <div className="flex justify-between items-start mb-4">
               <div className="p-3 bg-error-container text-error rounded-xl shadow-sm">
@@ -225,22 +225,64 @@ export default function Clustering() {
             <div>
               <p className="text-body-md text-on-surface-variant mb-1">Océanos Azules</p>
               <div className="flex items-baseline gap-2">
-                <h2 className="text-display-lg font-bold text-on-surface leading-none">{blueOceansCount}</h2>
+                <h2 className="text-display-lg font-bold text-on-surface leading-none">
+                  {isLoadingStats ? <Skeleton variant="text" className="w-12 h-10" /> : blueOceansCount}
+                </h2>
                 <span className="text-error font-medium text-label-sm">hallazgos</span>
               </div>
             </div>
           </div>
+
+          {(() => {
+            if (isLoadingStats) {
+              return <div className="glass-panel p-6 rounded-2xl h-48 flex items-center justify-center"><Skeleton className="w-full h-full" /></div>;
+            }
+            const metrics = driftMetrics || {
+              status: 'normal',
+              drift_rate_pct: 0,
+              message: 'Ecosistema estable.',
+              total_new_projects: 0,
+              sse_anomalies_count: 0
+            };
+            return (
+              <div className={`glass-panel p-6 rounded-2xl flex flex-col justify-between transition-colors ${metrics.status === 'alert' ? 'border border-error/40 bg-error/5 hover:bg-error/10' : ''}`}>
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-body-md text-on-surface-variant">Tasa de Deriva<br/>(Drift Rate)</p>
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center border ${metrics.status === 'alert' ? 'bg-error-container/30 text-error border-error/20' : 'bg-primary-container/30 text-primary border-primary/20'}`}>
+                    <BarChart2 className="w-6 h-6" />
+                  </div>
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className={`text-display-lg font-bold leading-none ${metrics.status === 'alert' ? 'text-error' : 'text-on-surface'}`}>
+                      {`${metrics.drift_rate_pct}%`}
+                    </h2>
+                    <span className={`px-3 py-1 text-label-sm font-semibold rounded-full border ${metrics.status === 'alert' ? 'bg-error/10 text-error border-error/30 animate-pulse' : 'bg-surface-container-low text-on-surface-variant border-outline/30'}`}>
+                      {metrics.status === 'alert' ? 'Requiere Atención' : 'Estable'}
+                    </span>
+                  </div>
+                  <p className={`text-label-sm mb-3 ${metrics.status === 'alert' ? 'text-error font-medium' : 'text-on-surface-variant'}`}>
+                    {metrics.status === 'alert' ? '⚠️ ' : '✅ '}{metrics.message}
+                  </p>
+                  <div className="w-full bg-surface-container-highest rounded-full h-1.5 mb-2">
+                    <div className={`h-full rounded-full ${metrics.status === 'alert' ? 'bg-error' : 'bg-primary'}`} style={{ width: `${Math.min(metrics.drift_rate_pct, 100)}%` }}></div>
+                  </div>
+                  <div className="flex justify-between items-center mt-1">
+                    <p className="text-[12px] font-medium text-on-surface-variant">Nuevos: {metrics.total_new_projects}</p>
+                    <p className="text-[12px] font-medium text-on-surface-variant">Anomalías: {metrics.sse_anomalies_count}</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </div>
 
-        {}
         <div className="lg:col-span-2 glass-panel p-6 rounded-2xl flex flex-col">
           <div className="flex justify-between items-start mb-6">
             <div>
               <h3 className="text-title-lg font-bold text-on-surface">Mapa de Clusters Semánticos</h3>
               <p className="text-body-md text-on-surface-variant">Distribución de proyectos académicos basada en similitud vectorial.</p>
             </div>
-            
-            {}
             <div className="flex bg-surface-container-low p-1 rounded-xl border border-outline-variant/50">
               <button 
                 onClick={() => setViewMode('2d')}
@@ -257,18 +299,44 @@ export default function Clustering() {
             </div>
           </div>
 
-          <div className="flex-1 min-h-[300px] bg-surface-container-lowest rounded-xl border border-outline-variant/30 p-2 overflow-hidden relative">
-            {viewMode === '2d' ? (
+          <div className="flex overflow-x-auto gap-2 pb-4 mb-2 scrollbar-thin scrollbar-thumb-outline-variant scrollbar-track-transparent">
+            <button
+              onClick={() => setSelectedTab('global')}
+              className={`whitespace-nowrap px-4 py-2 rounded-lg font-label-md transition-all ${selectedTab === 'global' ? 'bg-primary text-white shadow-sm' : 'bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-low border border-outline-variant/50'}`}
+            >
+              Vista Global
+            </button>
+            {dynamicBarData.map((c, i) => (
+              <button
+                key={i}
+                onClick={() => setSelectedTab(c.cluster_id?.toString() || '')}
+                className={`whitespace-nowrap px-4 py-2 rounded-lg font-label-md transition-all ${selectedTab === c.cluster_id?.toString() ? 'bg-primary text-white shadow-sm' : 'bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-low border border-outline-variant/50'}`}
+              >
+                {c.name}
+              </button>
+            ))}
+            <button
+              onClick={() => setSelectedTab('blue_oceans')}
+              className={`whitespace-nowrap px-4 py-2 rounded-lg font-label-md transition-all ${selectedTab === 'blue_oceans' ? 'bg-error text-white shadow-sm' : 'bg-error-container/20 text-error hover:bg-error-container/40 border border-error/30'}`}
+            >
+              🌊 Océanos Azules
+            </button>
+          </div>
+
+          <div className="flex-1 min-h-[400px] bg-surface-container-lowest rounded-xl border border-outline-variant/30 p-2 overflow-hidden relative">
+            {isLoadingMaps ? (
+              <Skeleton className="w-full h-full min-h-[400px]" />
+            ) : viewMode === '2d' ? (
               <iframe 
                 srcDoc={html2d || "<html><body><div style='display:flex;justify-content:center;align-items:center;height:100%;font-family:sans-serif;color:gray'>Cargando Mapa 2D interactivo...</div></body></html>"} 
-                className="w-full h-full border-0 rounded-xl"
+                className="w-full h-full border-0 rounded-xl min-h-[400px]"
                 title="2D Cluster Map"
                 sandbox="allow-scripts allow-same-origin"
               />
             ) : (
               <iframe 
                 srcDoc={html3d || "<html><body><div style='display:flex;justify-content:center;align-items:center;height:100%;font-family:sans-serif;color:gray'>Cargando Mapa 3D interactivo...</div></body></html>"} 
-                className="w-full h-full border-0"
+                className="w-full h-full border-0 min-h-[400px]"
                 title="3D Cluster Map"
                 sandbox="allow-scripts allow-same-origin"
               />
@@ -278,28 +346,33 @@ export default function Clustering() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {}
         <div className="glass-panel p-6 rounded-2xl">
           <h3 className="text-title-lg font-bold text-on-surface mb-1">Proyectos por Categoría</h3>
           <p className="text-body-md text-on-surface-variant mb-6">Volumen de trabajos clasificados automáticamente.</p>
           <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={dynamicBarData} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#757684' }} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#757684' }} />
-                <Tooltip cursor={{ fill: '#f8f9ff' }} contentStyle={{ borderRadius: '8px', border: '1px solid #c4c5d5' }} />
-                <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                  {dynamicBarData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color || (index === 0 ? '#00288e' : index === 1 ? '#3755c3' : '#c4c5d5')} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+            {isLoadingStats ? (
+              <Skeleton className="w-full h-full" />
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={dynamicBarData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
+                  <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
+                  <Tooltip 
+                    cursor={{fill: '#f1f5f9'}}
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                  />
+                  <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                    {dynamicBarData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color || '#3b82f6'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
 
-        {}
         <div className="glass-panel p-6 rounded-2xl flex flex-col">
           <div className="flex justify-between items-center mb-6">
             <div>
@@ -345,6 +418,7 @@ export default function Clustering() {
           </div>
         </div>
       </div>
+      <ToastNotification isOpen={!!toastMsg} message={toastMsg} onClose={() => setToastMsg('')} />
     </motion.div>
   );
 }

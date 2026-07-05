@@ -4,6 +4,7 @@ import { ArrowLeft, Search, FileText } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { API_CONFIG } from '../../application/config/api_config';
+import { Skeleton } from '../components/atoms/Skeleton';
 
 interface ProjectData {
   id: string;
@@ -89,12 +90,14 @@ export default function ProjectsList() {
             </thead>
             <tbody className="divide-y divide-outline-variant/30 bg-surface-container-lowest/50">
               {isLoading ? (
-                <tr>
-                  <td colSpan={4} className="py-12 text-center">
-                    <div className="inline-block w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4"></div>
-                    <p className="text-body-md text-on-surface-variant">Cargando proyectos desde ChromaDB...</p>
-                  </td>
-                </tr>
+                [...Array(6)].map((_, i) => (
+                  <tr key={i}>
+                    <td className="py-4 px-6"><Skeleton className="w-3/4 h-5" /></td>
+                    <td className="py-4 px-6"><Skeleton className="w-1/2 h-4" /></td>
+                    <td className="py-4 px-6"><Skeleton className="w-1/3 h-4" /></td>
+                    <td className="py-4 px-6 text-right flex justify-end"><Skeleton className="w-1/2 h-6 rounded-full" /></td>
+                  </tr>
+                ))
               ) : filteredProjects.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="py-12 text-center">

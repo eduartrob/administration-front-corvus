@@ -34,12 +34,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(user);
         if (token) {
           axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+          // Prefetch if we restore a session
+          setTimeout(() => {
+            import('../cache/ClusteringCache').then(({ ClusteringCache }) => {
+              ClusteringCache.prefetchMap('global');
+            });
+          }, 1000);
         }
       } catch (e) {
         console.error("Error parsing session", e);
       }
     }
     setIsInitializing(false);
+  }, []);
+
+  useEffect(() => {
+    const interceptor = axios.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response && error.response.status === 401) {
+          // Token expirado o inválido: forzar cierre de sesión
+          setUser(null);
+          localStorage.removeItem('corvus_session');
+          sessionStorage.removeItem('corvus_session');
+          delete axios.defaults.headers.common['Authorization'];
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    return () => {
+      axios.interceptors.response.eject(interceptor);
+    };
   }, []);
 
   const login = async (email: string, password: string, rememberMe: boolean) => {
@@ -63,6 +89,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         sessionStorage.setItem('corvus_session', sessionData);
       }
+
+      // Prefetch global cluster maps in the background
+      setTimeout(() => {
+        import('../cache/ClusteringCache').then(({ ClusteringCache }) => {
+          ClusteringCache.prefetchMap('global');
+        });
+      }, 1000);
+
     } catch (error) {
       throw error;
     } finally {

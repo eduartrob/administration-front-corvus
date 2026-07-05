@@ -15,7 +15,10 @@ interface InferenceRecord {
   veredicto: string | null;
   secciones_faltantes: string;
   secciones_opcionales: string;
+  cluster_id?: number | null;
 }
+
+import { MinimapPreview, type MinimapCluster } from '../components/molecules/MinimapPreview';
 
 interface HistoryResponse {
   total: number;
@@ -44,16 +47,26 @@ export default function InferenceHistory() {
   const [offset, setOffset]   = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState<string | null>(null);
+  
+  const [minimapClusters, setMinimapClusters] = useState<MinimapCluster[]>([]);
+  const [hoveredInference, setHoveredInference] = useState<number | null>(null);
+  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
 
   const fetchData = useCallback(async (off: number) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await axios.get<HistoryResponse>(
-        `${API_CONFIG.BASE_URL}/clustering/integrator/inference-history`,
-        { params: { limit: LIMIT, offset: off } }
-      );
+      const [res, minimapRes] = await Promise.all([
+        axios.get<HistoryResponse>(
+          `${API_CONFIG.BASE_URL}/clustering/integrator/inference-history`,
+          { params: { limit: LIMIT, offset: off } }
+        ),
+        axios.get<{ clusters: MinimapCluster[] }>(
+          `${API_CONFIG.BASE_URL}/clustering/integrator/admin/minimap-data`
+        ).catch(() => ({ data: { clusters: [] } }))
+      ]);
       setData(res.data);
+      setMinimapClusters(minimapRes.data.clusters || []);
     } catch {
       setError('No se pudo conectar al servicio de clustering. Verifica que el backend esté en línea.');
     } finally {
@@ -159,7 +172,12 @@ export default function InferenceHistory() {
                   return (
                     <tr
                       key={item.id}
-                      className="hover:bg-surface-container-low/40 transition-colors"
+                      className="hover:bg-surface-container-low/40 transition-colors relative cursor-default"
+                      onMouseEnter={() => setHoveredInference(item.id)}
+                      onMouseMove={(e) => {
+                        setTooltipPos({ x: e.clientX, y: e.clientY });
+                      }}
+                      onMouseLeave={() => setHoveredInference(null)}
                     >
                       <td className="px-5 py-3 text-outline font-mono text-xs">{item.id}</td>
                       <td className="px-5 py-3">
@@ -237,6 +255,21 @@ export default function InferenceHistory() {
           </div>
         )}
       </div>
+
+      {hoveredInference !== null && (
+        <div
+          className="fixed pointer-events-none z-[100]"
+          style={{
+            left: tooltipPos.x + 15,
+            top: tooltipPos.y + 15,
+          }}
+        >
+          <MinimapPreview
+            clusters={minimapClusters}
+            targetClusterId={data?.items.find(i => i.id === hoveredInference)?.cluster_id}
+          />
+        </div>
+      )}
     </motion.div>
   );
 }
