@@ -15,10 +15,12 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USERNAME }}
           key: ${{ secrets.SERVER_SSH_KEY }}
+          command_timeout: 20m
           script: |
-            cd /home/corvus/${{ github.event.repository.name }}
+            cd /home/corvus/administration-front-corvus
             git fetch --all
             git checkout main
             git pull origin main
             cd /home/corvus/orchestration-back-corvus
-            docker compose up -d --build admin-frontend
+            docker compose build admin-frontend
+            docker compose up -d --no-deps admin-frontend
