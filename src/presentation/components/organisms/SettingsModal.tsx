@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Save, FileText, Settings, Sliders, CheckCircle, Edit2, Trash2 } from 'lucide-react';
 import axios from 'axios';
 import { API_CONFIG } from '../../../application/config/api_config';
+import { useAuth } from '../../../application/contexts/AuthContext';
 
 const ALL_SUPPORTED_EXTENSIONS = [
   { ext: '.pdf', label: 'Documentos PDF', desc: 'Artículos científicos, tesis y libros.' },
@@ -20,6 +21,7 @@ interface SettingsModalProps {
 }
 
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'engine' | 'appearance'>('engine');
   const [allowedExtensions, setAllowedExtensions] = useState<string[]>([]);
   const [llmProvider, setLlmProvider] = useState<'ollama' | 'groq'>('ollama');
@@ -77,7 +79,9 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       await axios.post(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/config`, {
         allowed_extensions: allowedExtensions,
         llm_provider: llmProvider,
-        drive_folder_id: driveFolderId
+        drive_folder_id: driveFolderId,
+        authorName: user?.fullName,
+        authorPhotoUrl: user?.photoUrl
       });
       setSavedDriveFolderId(driveFolderId);
       setIsEditingDriveId(false);
