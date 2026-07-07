@@ -1,5 +1,7 @@
+#!/bin/bash
+cat << 'INNEREOF' > src/presentation/pages/SystemMonitor.tsx
 import { useState, useEffect, useRef } from 'react';
-import { Activity, Server, Cpu, HardDrive, TerminalSquare, AlertTriangle, Clock } from 'lucide-react';
+import { Activity, Server, Cpu, HardDrive, TerminalSquare, AlertTriangle, CheckCircle, PowerOff, Clock } from 'lucide-react';
 import { API_CONFIG } from '../../application/config/api_config';
 import { Skeleton } from '../components/atoms/Skeleton';
 
@@ -99,6 +101,8 @@ export default function SystemMonitor() {
 
     return () => sseLogs.close();
   }, [selectedContainer]);
+
+  const activeErrors = containers.filter(c => c.state !== 'running');
 
   return (
     <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-900 p-4 sm:p-6 space-y-6 overflow-y-auto">
@@ -264,3 +268,4 @@ export default function SystemMonitor() {
     </div>
   );
 }
+INNEREOF
