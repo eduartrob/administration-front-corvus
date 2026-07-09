@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Save, FileText, Settings, Sliders, CheckCircle, Edit2, Trash2 } from 'lucide-react';
+import { X, Save, FileText, Settings, Sliders, CheckCircle } from 'lucide-react';
 import axios from 'axios';
 import { API_CONFIG } from '../../../application/config/api_config';
 
@@ -23,22 +23,29 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<'engine' | 'appearance'>('engine');
   const [allowedExtensions, setAllowedExtensions] = useState<string[]>([]);
   const [llmProvider, setLlmProvider] = useState<'ollama' | 'groq'>('ollama');
-  const [driveFolderId, setDriveFolderId] = useState<string>('');
-  const [savedDriveFolderId, setSavedDriveFolderId] = useState<string>('');
-  const [isEditingDriveId, setIsEditingDriveId] = useState<boolean>(false);
+  const [driveFolders, setDriveFolders] = useState<any[]>([]);
+  const [isFetchingFolders, setIsFetchingFolders] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isScanning, setIsScanning] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<{text: string, type: 'success' | 'error'} | null>(null);
-  const [scanMessage, setScanMessage] = useState<{text: string, type: 'success' | 'error'} | null>(null);
+
+  const fetchDriveInvitations = async () => {
+    setIsFetchingFolders(true);
+    try {
+      const res = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/drive/invitations`);
+      setDriveFolders(res.data || []);
+    } catch (error) {
+      console.error('Error fetching drive invitations', error);
+      setMessage({ text: 'Error al cargar carpetas compartidas.', type: 'error' });
+    } finally {
+      setIsFetchingFolders(false);
+    }
+  };
 
   useEffect(() => {
     if (isOpen) {
       fetchConfig();
-      fetchConfig();
-      setMessage(null);
-      setScanMessage(null);
-      setIsEditingDriveId(false);
+      fetchDriveInvitations();
     }
   }, [isOpen]);
 
@@ -54,12 +61,6 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           setAllowedExtensions(validExts);
         }
         if (res.data.llm_provider) setLlmProvider(res.data.llm_provider);
-        if (res.data.drive_folder_id) {
-          setDriveFolderId(res.data.drive_folder_id);
-          setSavedDriveFolderId(res.data.drive_folder_id);
-        } else {
-          setSavedDriveFolderId('');
-        }
       }
     } catch (error) {
       console.error('Error fetching config', error);
@@ -76,11 +77,8 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     try {
       await axios.post(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/config`, {
         allowed_extensions: allowedExtensions,
-        llm_provider: llmProvider,
-        drive_folder_id: driveFolderId
+        llm_provider: llmProvider
       });
-      setSavedDriveFolderId(driveFolderId);
-      setIsEditingDriveId(false);
       setMessage({ text: 'Configuración actualizada con éxito.', type: 'success' });
       setTimeout(() => setMessage(null), 3000);
     } catch (error) {
@@ -128,25 +126,31 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     );
   };
 
-  const handleScanDrive = async () => {
-    if (!driveFolderId) {
-      setScanMessage({ text: 'Por favor ingresa el ID de la carpeta primero e intenta guardar.', type: 'error' });
-      return;
+  const acceptFolder = async (folderId: string) => {
+    try {
+      await axios.post(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/drive/accept`, { folder_id: folderId });
+      setMessage({ text: 'Carpeta aceptada correctamente.', type: 'success' });
+      setTimeout(() => setMessage(null), 3000);
+      fetchDriveInvitations();
+    } catch (error) {
+      console.error('Error accepting folder', error);
+      setMessage({ text: 'Error al aceptar la carpeta.', type: 'error' });
     }
-    setIsScanning(true);
-    setScanMessage(null);
+  };
+
+  const handleScanDrive = async (folderId: string) => {
+    setMessage(null);
     try {
       await axios.post(`${API_CONFIG.BASE_URL}/clustering/integrator/process-folder`, {
-        folder_id: driveFolderId,
+        folder_id: folderId,
         access_token: "service-account",
         user_id: "admin"
       });
-      setScanMessage({ text: 'Escaneo iniciado en segundo plano. Cierra esta ventana y revisa los proyectos pendientes.', type: 'success' });
+      setMessage({ text: 'Escaneo iniciado en segundo plano para la carpeta seleccionada.', type: 'success' });
+      setTimeout(() => setMessage(null), 3000);
     } catch (error) {
       console.error('Error al iniciar el escaneo de Drive', error);
-      setScanMessage({ text: 'Error al iniciar el escaneo de Drive.', type: 'error' });
-    } finally {
-      setIsScanning(false);
+      setMessage({ text: 'Error al iniciar el escaneo de Drive.', type: 'error' });
     }
   };
 
@@ -223,71 +227,49 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                         <ExtensionToggle key={info.ext} ext={info.ext} label={info.label} desc={info.desc} />
                       ))}
 
-                      <h4 className="text-body-lg font-bold text-on-surface mt-8 mb-2 border-t border-outline-variant/50 pt-6">Google Drive (Cuenta de Servicio)</h4>
-                      <p className="text-body-sm text-on-surface-variant mb-4">Ingresa el ID de la carpeta institucional donde se guardan los proyectos en formato PDF.</p>
+                      <h4 className="text-body-lg font-bold text-on-surface mt-8 mb-2 border-t border-outline-variant/50 pt-6">Carpetas de Proyectos Históricos (Drive)</h4>
+                      <p className="text-body-sm text-on-surface-variant mb-4">Acepta y sincroniza las carpetas que los profesores han compartido con el bot: <span className="font-mono bg-surface-container-low px-1 rounded">corvus-backend@corvus-376d3.iam.gserviceaccount.com</span></p>
                       
-                      <div className="flex gap-2 items-end">
-                        <div className="flex-1">
-                          <label className="block text-label-md font-bold text-on-surface-variant mb-1">Folder ID</label>
-                          <input 
-                            type="text" 
-                            value={driveFolderId}
-                            onChange={(e) => setDriveFolderId(e.target.value)}
-                            disabled={!!savedDriveFolderId && !isEditingDriveId}
-                            placeholder="Ej. 1A2b3C4d5E6f7G8h9I0j..." 
-                            className={`w-full bg-surface-container-lowest border border-outline-variant/50 rounded-xl px-4 py-3 text-body-md text-on-surface focus:outline-none transition-all ${!!savedDriveFolderId && !isEditingDriveId ? 'opacity-60 cursor-not-allowed' : 'focus:border-primary focus:ring-1 focus:ring-primary'}`}
-                          />
+                      {isFetchingFolders ? (
+                        <div className="flex justify-center p-4">
+                          <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
                         </div>
-                        {!!savedDriveFolderId && !isEditingDriveId ? (
-                          <>
-                            <button
-                              title="Modificar ID"
-                              onClick={() => setIsEditingDriveId(true)}
-                              className="flex items-center justify-center h-12 w-12 rounded-xl transition-colors bg-surface-container hover:bg-surface-container-highest text-on-surface-variant border border-outline-variant/30"
-                            >
-                              <Edit2 className="w-5 h-5" />
-                            </button>
-                            <button
-                              title="Borrar ID"
-                              onClick={() => {
-                                setDriveFolderId('');
-                                setIsEditingDriveId(true);
-                              }}
-                              className="flex items-center justify-center h-12 w-12 rounded-xl transition-colors bg-error-container/30 hover:bg-error-container/60 text-error border border-error/20"
-                            >
-                              <Trash2 className="w-5 h-5" />
-                            </button>
-                            <button 
-                              onClick={handleScanDrive}
-                              disabled={isScanning}
-                              className={`flex items-center justify-center h-12 px-5 ml-2 rounded-xl font-label-md transition-colors ${isScanning ? 'bg-surface-variant text-on-surface-variant cursor-not-allowed' : 'bg-secondary text-white hover:bg-secondary/90 shadow-sm'}`}
-                            >
-                              {isScanning ? (
-                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                              ) : (
-                                'Escanear Drive'
-                              )}
-                            </button>
-                          </>
-                        ) : (
-                          <button 
-                            onClick={handleScanDrive}
-                            disabled={isScanning || !driveFolderId || (isEditingDriveId && driveFolderId !== savedDriveFolderId)}
-                            title={isEditingDriveId && driveFolderId !== savedDriveFolderId ? "Guarda los cambios primero" : ""}
-                            className={`flex items-center justify-center h-12 px-6 ml-2 rounded-xl font-label-md transition-colors ${isScanning || !driveFolderId || (isEditingDriveId && driveFolderId !== savedDriveFolderId) ? 'bg-surface-variant text-on-surface-variant cursor-not-allowed' : 'bg-secondary text-white hover:bg-secondary/90 shadow-sm'}`}
-                          >
-                            {isScanning ? (
-                              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                            ) : (
-                              'Escanear Drive'
-                            )}
-                          </button>
-                        )}
-                      </div>
-                      
-                      {scanMessage && (
-                        <div className={`mt-3 p-3 rounded-xl text-body-sm font-medium ${scanMessage.type === 'success' ? 'bg-primary-container text-primary' : 'bg-error-container text-error'}`}>
-                          {scanMessage.text}
+                      ) : driveFolders.length === 0 ? (
+                        <div className="p-4 bg-surface-container-lowest border border-outline-variant/50 rounded-xl text-center text-on-surface-variant text-body-sm">
+                          No se encontraron carpetas compartidas.
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {driveFolders.map((folder: any) => (
+                            <div key={folder.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-surface-container-low rounded-xl border border-outline-variant/50 gap-3 shadow-sm">
+                              <div className="flex flex-col">
+                                <span className="font-bold text-on-surface text-body-md truncate max-w-[200px] sm:max-w-[300px]" title={folder.name}>{folder.name}</span>
+                                <span className="text-on-surface-variant text-body-sm truncate max-w-[200px] sm:max-w-[300px]" title={folder.sharingUser?.emailAddress || 'Desconocido'}>{folder.sharingUser?.emailAddress || 'Desconocido'}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {folder.is_accepted ? (
+                                  <>
+                                    <span className="flex items-center gap-1 text-primary text-label-sm font-bold bg-primary-container/30 px-3 py-1.5 rounded-full border border-primary/20">
+                                      <CheckCircle className="w-4 h-4" /> Aceptada
+                                    </span>
+                                    <button 
+                                      onClick={() => handleScanDrive(folder.id)}
+                                      className="flex items-center justify-center px-4 py-1.5 rounded-full text-label-sm font-bold bg-secondary text-white hover:bg-secondary/90 transition-colors shadow-sm"
+                                    >
+                                      Escanear
+                                    </button>
+                                  </>
+                                ) : (
+                                  <button 
+                                    onClick={() => acceptFolder(folder.id)}
+                                    className="flex items-center justify-center px-4 py-1.5 rounded-full text-label-sm font-bold bg-primary text-on-primary hover:bg-primary/90 transition-colors shadow-sm"
+                                  >
+                                    Aceptar
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       )}
 
