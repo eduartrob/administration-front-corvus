@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, FileText, Settings, Sliders, CheckCircle } from 'lucide-react';
+import { X, Save, FileText, Settings, Sliders, CheckCircle } from 'lucide-react';
 import axios from 'axios';
 import { API_CONFIG } from '../../../application/config/api_config';
 
@@ -23,13 +23,29 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<'engine' | 'appearance'>('engine');
   const [allowedExtensions, setAllowedExtensions] = useState<string[]>([]);
   const [llmProvider, setLlmProvider] = useState<'ollama' | 'groq'>('ollama');
+  const [driveFolders, setDriveFolders] = useState<any[]>([]);
+  const [isFetchingFolders, setIsFetchingFolders] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<{text: string, type: 'success' | 'error'} | null>(null);
 
+  const fetchDriveInvitations = async () => {
+    setIsFetchingFolders(true);
+    try {
+      const res = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/drive/invitations`);
+      setDriveFolders(res.data || []);
+    } catch (error) {
+      console.error('Error fetching drive invitations', error);
+      setMessage({ text: 'Error al cargar carpetas compartidas.', type: 'error' });
+    } finally {
+      setIsFetchingFolders(false);
+    }
+  };
+
   useEffect(() => {
     if (isOpen) {
       fetchConfig();
+      fetchDriveInvitations();
     }
   }, [isOpen]);
 
@@ -110,7 +126,33 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     );
   };
 
+  const acceptFolder = async (folderId: string) => {
+    try {
+      await axios.post(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/drive/accept`, { folder_id: folderId });
+      setMessage({ text: 'Carpeta aceptada correctamente.', type: 'success' });
+      setTimeout(() => setMessage(null), 3000);
+      fetchDriveInvitations();
+    } catch (error) {
+      console.error('Error accepting folder', error);
+      setMessage({ text: 'Error al aceptar la carpeta.', type: 'error' });
+    }
+  };
 
+  const handleScanDrive = async (folderId: string) => {
+    setMessage(null);
+    try {
+      await axios.post(`${API_CONFIG.BASE_URL}/clustering/integrator/process-folder`, {
+        folder_id: folderId,
+        access_token: "service-account",
+        user_id: "admin"
+      });
+      setMessage({ text: 'Escaneo iniciado en segundo plano para la carpeta seleccionada.', type: 'success' });
+      setTimeout(() => setMessage(null), 3000);
+    } catch (error) {
+      console.error('Error al iniciar el escaneo de Drive', error);
+      setMessage({ text: 'Error al iniciar el escaneo de Drive.', type: 'error' });
+    }
+  };
 
   return (
     <AnimatePresence>
@@ -185,6 +227,51 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                         <ExtensionToggle key={info.ext} ext={info.ext} label={info.label} desc={info.desc} />
                       ))}
 
+                      <h4 className="text-body-lg font-bold text-on-surface mt-8 mb-2 border-t border-outline-variant/50 pt-6">Carpetas de Proyectos Históricos (Drive)</h4>
+                      <p className="text-body-sm text-on-surface-variant mb-4">Acepta y sincroniza las carpetas que los profesores han compartido con el bot: <span className="font-mono bg-surface-container-low px-1 rounded">corvus-backend@corvus-376d3.iam.gserviceaccount.com</span></p>
+                      
+                      {isFetchingFolders ? (
+                        <div className="flex justify-center p-4">
+                          <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+                        </div>
+                      ) : driveFolders.length === 0 ? (
+                        <div className="p-4 bg-surface-container-lowest border border-outline-variant/50 rounded-xl text-center text-on-surface-variant text-body-sm">
+                          No se encontraron carpetas compartidas.
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {driveFolders.map((folder: any) => (
+                            <div key={folder.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-surface-container-low rounded-xl border border-outline-variant/50 gap-3 shadow-sm">
+                              <div className="flex flex-col">
+                                <span className="font-bold text-on-surface text-body-md truncate max-w-[200px] sm:max-w-[300px]" title={folder.name}>{folder.name}</span>
+                                <span className="text-on-surface-variant text-body-sm truncate max-w-[200px] sm:max-w-[300px]" title={folder.sharingUser?.emailAddress || 'Desconocido'}>{folder.sharingUser?.emailAddress || 'Desconocido'}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {folder.is_accepted ? (
+                                  <>
+                                    <span className="flex items-center gap-1 text-primary text-label-sm font-bold bg-primary-container/30 px-3 py-1.5 rounded-full border border-primary/20">
+                                      <CheckCircle className="w-4 h-4" /> Aceptada
+                                    </span>
+                                    <button 
+                                      onClick={() => handleScanDrive(folder.id)}
+                                      className="flex items-center justify-center px-4 py-1.5 rounded-full text-label-sm font-bold bg-secondary text-white hover:bg-secondary/90 transition-colors shadow-sm"
+                                    >
+                                      Escanear
+                                    </button>
+                                  </>
+                                ) : (
+                                  <button 
+                                    onClick={() => acceptFolder(folder.id)}
+                                    className="flex items-center justify-center px-4 py-1.5 rounded-full text-label-sm font-bold bg-primary text-on-primary hover:bg-primary/90 transition-colors shadow-sm"
+                                  >
+                                    Aceptar
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
 
                       <h4 className="text-body-lg font-bold text-on-surface mt-8 mb-2 border-t border-outline-variant/50 pt-6">Proveedor de Inteligencia Artificial</h4>
                       <p className="text-body-sm text-on-surface-variant mb-4">Selecciona el motor principal de IA. Groq ofrece inferencia ultra-rápida (&#60;3s), mientras Ollama garantiza 100% privacidad ejecutándose localmente (&#126;40s). Si Groq falla, el sistema usará Ollama automáticamente como respaldo (Failover).</p>
