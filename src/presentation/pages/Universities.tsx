@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GraduationCap, Search, Copy, Check, ShieldAlert, Key } from 'lucide-react';
 import axios from 'axios';
-import { API_CONFIG } from '../../../application/config/api_config';
+import { API_CONFIG } from '../../application/config/api_config';
 
 interface University {
   id: string;
