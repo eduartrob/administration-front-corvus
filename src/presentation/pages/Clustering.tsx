@@ -28,13 +28,13 @@ export default function Clustering() {
   const fetchMaps = async (tab: string) => {
     import('../../application/cache/ClusteringCache').then(async ({ ClusteringCache }) => {
       // Check cache first
-      const cached = ClusteringCache.getMap(tab);
+      const cached = ClusteringCache.getMap(tab, selectedUniversity, selectedCareer);
       if (cached) {
         setHtml2d(cached.html2d);
         setHtml3d(cached.html3d);
         setIsLoadingMaps(false);
         // Optionally fetch in background to update cache without showing loader
-        ClusteringCache.prefetchMap(tab).then(newData => {
+        ClusteringCache.prefetchMap(tab, selectedUniversity, selectedCareer).then(newData => {
           if (newData) {
             setHtml2d(newData.html2d);
             setHtml3d(newData.html3d);
@@ -47,7 +47,7 @@ export default function Clustering() {
       setHtml2d('');
       setHtml3d('');
       
-      const data = await ClusteringCache.prefetchMap(tab);
+      const data = await ClusteringCache.prefetchMap(tab, selectedUniversity, selectedCareer);
       if (data) {
         setHtml2d(data.html2d);
         setHtml3d(data.html3d);
@@ -63,13 +63,17 @@ export default function Clustering() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const countRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/projects-count`);
+        const uParam = selectedUniversity ? `?university_id=${selectedUniversity}` : '';
+        const cParam = selectedCareer ? (uParam ? `&career_id=${selectedCareer}` : `?career_id=${selectedCareer}`) : '';
+        const queryParams = uParam + cParam;
+
+        const countRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/projects-count${queryParams}`);
         if (countRes.data && countRes.data.count !== undefined) {
           setProjectCount(countRes.data.count);
         }
         
         try {
-          const driftRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/drift-metrics`);
+          const driftRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/drift-metrics${queryParams}`);
           setDriftMetrics(driftRes.data);
         } catch (e) {
           console.warn('Drift metrics not available');
@@ -79,7 +83,9 @@ export default function Clustering() {
       }
 
       try {
-        const recentRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/recent-projects?limit=5`);
+        const uParam = selectedUniversity ? `&university_id=${selectedUniversity}` : '';
+        const cParam = selectedCareer ? `&career_id=${selectedCareer}` : '';
+        const recentRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/recent-projects?limit=5${uParam}${cParam}`);
         if (Array.isArray(recentRes.data)) {
           setRecentProjects(recentRes.data);
         }
@@ -88,7 +94,10 @@ export default function Clustering() {
       }
       
       try {
-        const statsRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/clusters-stats`);
+        const uParam = selectedUniversity ? `?university_id=${selectedUniversity}` : '';
+        const cParam = selectedCareer ? (uParam ? `&career_id=${selectedCareer}` : `?career_id=${selectedCareer}`) : '';
+        const queryParams = uParam + cParam;
+        const statsRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/clusters-stats${queryParams}`);
         if (statsRes.data && statsRes.data.is_clustering_running !== undefined) {
            const wasExecuting = isExecutingRef.current;
            const isNowExecuting = statsRes.data.is_clustering_running;
@@ -168,10 +177,47 @@ export default function Clustering() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
     >
-      <div className="flex justify-between items-start mb-8">
+      {driftMetrics && driftMetrics.drift_rate_pct >= 15 && (
+        <div className="bg-error-container/80 border border-error/50 p-4 rounded-xl mb-6 flex items-center justify-between shadow-sm animate-pulse">
+          <div>
+            <h3 className="text-error font-bold text-title-md flex items-center gap-2">⚠️ Deriva de Ecosistema Detectada ({driftMetrics.drift_rate_pct}%)</h3>
+            <p className="text-on-error-container text-body-md">Se recomienda ejecutar el Clustering Global inmediatamente para re-balancear los mapas.</p>
+          </div>
+          <button 
+            onClick={executeClustering}
+            disabled={isExecuting}
+            className="px-6 py-2 bg-error text-white font-label-md rounded-lg hover:bg-error/90 shadow-md transition-colors"
+          >
+            {isExecuting ? 'Ejecutando...' : 'Re-ejecutar Clustering'}
+          </button>
+        </div>
+      )}
+
+      <div className="flex flex-col md:flex-row justify-between items-start mb-8 gap-4">
         <div>
           <h1 className="text-headline-lg font-bold text-on-surface">Clustering de Proyectos</h1>
           <p className="text-body-md text-on-surface-variant mt-2 max-w-2xl">Análisis semántico y agrupación automatizada de trabajos académicos para identificar sinergias y nuevas áreas de investigación.</p>
+          
+          <div className="flex gap-4 mt-6">
+            <select 
+              value={selectedUniversity} 
+              onChange={(e) => setSelectedUniversity(e.target.value)}
+              className="bg-surface-container-low border border-outline-variant text-on-surface rounded-lg px-4 py-2 font-label-md outline-none focus:border-primary"
+            >
+              {hierarchies.map(h => (
+                <option key={h.university_id} value={h.university_id}>{h.university_id}</option>
+              ))}
+            </select>
+            <select 
+              value={selectedCareer} 
+              onChange={(e) => setSelectedCareer(e.target.value)}
+              className="bg-surface-container-low border border-outline-variant text-on-surface rounded-lg px-4 py-2 font-label-md outline-none focus:border-primary"
+            >
+              {availableCareers.map(c => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
         </div>
         <div className="flex flex-col items-end gap-2">
           <button 
