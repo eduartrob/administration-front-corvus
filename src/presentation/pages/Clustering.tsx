@@ -63,7 +63,11 @@ export default function Clustering() {
     axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/careers`)
       .then(res => {
         if (res.data && Array.isArray(res.data)) {
-          setHierarchies(res.data);
+          const mapped = res.data.map((item: any) => ({
+            university_id: item.university || item.university_id,
+            careers: item.careers || []
+          }));
+          setHierarchies(mapped);
         }
       })
       .catch(e => console.error("Error fetching careers", e));
@@ -240,6 +244,7 @@ export default function Clustering() {
               onChange={(e) => setSelectedUniversity(e.target.value)}
               className="bg-surface-container-low border border-outline-variant text-on-surface rounded-lg px-4 py-2 font-label-md outline-none focus:border-primary"
             >
+              <option value="">Todas las Universidades</option>
               {hierarchies.map(h => (
                 <option key={h.university_id} value={h.university_id}>{h.university_id}</option>
               ))}
@@ -249,6 +254,7 @@ export default function Clustering() {
               onChange={(e) => setSelectedCareer(e.target.value)}
               className="bg-surface-container-low border border-outline-variant text-on-surface rounded-lg px-4 py-2 font-label-md outline-none focus:border-primary"
             >
+              <option value="">Todas las Carreras</option>
               {availableCareers.map(c => (
                 <option key={c} value={c}>{c}</option>
               ))}
