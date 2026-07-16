@@ -24,6 +24,10 @@ export default function Clustering() {
   const [toastMsg, setToastMsg] = useState('');
   const [selectedTab, setSelectedTab] = useState<string>('global');
   const [driftMetrics, setDriftMetrics] = useState<any>(null);
+  const [hierarchies, setHierarchies] = useState<any[]>([]);
+  const [selectedUniversity, setSelectedUniversity] = useState<string>('');
+  const [selectedCareer, setSelectedCareer] = useState<string>('');
+  const [availableCareers, setAvailableCareers] = useState<string[]>([]);
 
   const fetchMaps = async (tab: string) => {
     import('../../application/cache/ClusteringCache').then(async ({ ClusteringCache }) => {
@@ -55,11 +59,43 @@ export default function Clustering() {
       setIsLoadingMaps(false);
     });
   };
+  useEffect(() => {
+    axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/careers`)
+      .then(res => {
+        if (res.data && Array.isArray(res.data)) {
+          setHierarchies(res.data);
+        }
+      })
+      .catch(e => console.error("Error fetching careers", e));
+  }, []);
+
+  useEffect(() => {
+    if (hierarchies.length > 0) {
+        if (selectedUniversity === '') {
+            setSelectedUniversity(hierarchies[0].university_id);
+            setAvailableCareers(hierarchies[0].careers || []);
+            if (hierarchies[0].careers && hierarchies[0].careers.length > 0) {
+                setSelectedCareer(hierarchies[0].careers[0]);
+            } else {
+                setSelectedCareer('');
+            }
+        } else {
+            const h = hierarchies.find(h => h.university_id === selectedUniversity);
+            if (h) {
+                setAvailableCareers(h.careers || []);
+                if (!h.careers.includes(selectedCareer) && h.careers.length > 0) {
+                    setSelectedCareer(h.careers[0]);
+                } else if (h.careers.length === 0) {
+                    setSelectedCareer('');
+                }
+            }
+        }
+    }
+  }, [hierarchies, selectedUniversity]);
 
   useEffect(() => {
     fetchMaps(selectedTab);
-  }, [selectedTab]);
-
+  }, [selectedTab, selectedUniversity, selectedCareer]);
   useEffect(() => {
     const fetchStats = async () => {
       try {
