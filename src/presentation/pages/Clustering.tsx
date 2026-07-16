@@ -60,10 +60,7 @@ export default function Clustering() {
     });
   };
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/careers`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
+    axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/careers`)
       .then(res => {
         if (res.data && Array.isArray(res.data)) {
           setHierarchies(res.data);
