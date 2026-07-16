@@ -24,10 +24,10 @@ export default function Clustering() {
   const [toastMsg, setToastMsg] = useState('');
   const [selectedTab, setSelectedTab] = useState<string>('global');
   const [driftMetrics, setDriftMetrics] = useState<any>(null);
-  const [hierarchies, setHierarchies] = useState<any[]>([]);
+  const [universitiesList, setUniversitiesList] = useState<any[]>([]);
   const [selectedUniversity, setSelectedUniversity] = useState<string>('');
   const [selectedCareer, setSelectedCareer] = useState<string>('');
-  const [availableCareers, setAvailableCareers] = useState<string[]>([]);
+  const [availableCareers, setAvailableCareers] = useState<any[]>([]);
 
   const fetchMaps = async (tab: string) => {
     import('../../application/cache/ClusteringCache').then(async ({ ClusteringCache }) => {
