@@ -60,42 +60,48 @@ export default function Clustering() {
     });
   };
   useEffect(() => {
-    axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/careers`)
+    // Fetch all registered universities from auth-service
+    axios.get(`${API_CONFIG.BASE_URL}/auth/universities/registered`)
       .then(res => {
         if (res.data && Array.isArray(res.data)) {
-          const mapped = res.data.map((item: any) => ({
-            university_id: item.university || item.university_id,
-            careers: item.careers || []
-          }));
-          setHierarchies(mapped);
+          setUniversitiesList(res.data);
         }
       })
-      .catch(e => console.error("Error fetching careers", e));
+      .catch(e => console.error("Error fetching universities", e));
   }, []);
 
   useEffect(() => {
-    if (hierarchies.length > 0) {
-        if (selectedUniversity === '') {
-            setSelectedUniversity(hierarchies[0].university_id);
-            setAvailableCareers(hierarchies[0].careers || []);
-            if (hierarchies[0].careers && hierarchies[0].careers.length > 0) {
-                setSelectedCareer(hierarchies[0].careers[0]);
-            } else {
-                setSelectedCareer('');
-            }
-        } else {
-            const h = hierarchies.find(h => h.university_id === selectedUniversity);
-            if (h) {
-                setAvailableCareers(h.careers || []);
-                if (!h.careers.includes(selectedCareer) && h.careers.length > 0) {
-                    setSelectedCareer(h.careers[0]);
-                } else if (h.careers.length === 0) {
-                    setSelectedCareer('');
-                }
-            }
-        }
+    if (selectedUniversity) {
+      // Fetch careers for the selected university from auth-service
+      axios.get(`${API_CONFIG.BASE_URL}/auth/careers`, { params: { universityId: selectedUniversity } })
+        .then(res => {
+          if (res.data && Array.isArray(res.data)) {
+            setAvailableCareers(res.data);
+          } else {
+            setAvailableCareers([]);
+          }
+        })
+        .catch(e => {
+          console.error("Error fetching careers", e);
+          setAvailableCareers([]);
+        });
+    } else {
+      // Fetch all careers if no university is selected
+      axios.get(`${API_CONFIG.BASE_URL}/auth/careers`)
+        .then(res => {
+          if (res.data && Array.isArray(res.data)) {
+            setAvailableCareers(res.data);
+          } else {
+            setAvailableCareers([]);
+          }
+        })
+        .catch(e => {
+          console.error("Error fetching careers", e);
+          setAvailableCareers([]);
+        });
     }
-  }, [hierarchies, selectedUniversity]);
+    setSelectedCareer('');
+  }, [selectedUniversity]);
 
   useEffect(() => {
     fetchMaps(selectedTab);
@@ -242,21 +248,21 @@ export default function Clustering() {
             <select 
               value={selectedUniversity} 
               onChange={(e) => setSelectedUniversity(e.target.value)}
-              className="bg-surface-container-low border border-outline-variant text-on-surface rounded-lg px-4 py-2 font-label-md outline-none focus:border-primary"
+              className="bg-surface-container-low border border-outline-variant text-on-surface rounded-lg px-4 py-2 font-label-md outline-none focus:border-primary max-w-[250px] truncate"
             >
               <option value="">Todas las Universidades</option>
-              {hierarchies.map(h => (
-                <option key={h.university_id} value={h.university_id}>{h.university_id}</option>
+              {universitiesList.map(u => (
+                <option key={u.id} value={u.id}>{u.name}</option>
               ))}
             </select>
             <select 
               value={selectedCareer} 
               onChange={(e) => setSelectedCareer(e.target.value)}
-              className="bg-surface-container-low border border-outline-variant text-on-surface rounded-lg px-4 py-2 font-label-md outline-none focus:border-primary"
+              className="bg-surface-container-low border border-outline-variant text-on-surface rounded-lg px-4 py-2 font-label-md outline-none focus:border-primary max-w-[250px] truncate"
             >
               <option value="">Todas las Carreras</option>
               {availableCareers.map(c => (
-                <option key={c} value={c}>{c}</option>
+                <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
           </div>
