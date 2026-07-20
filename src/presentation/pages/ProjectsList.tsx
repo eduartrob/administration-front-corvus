@@ -4,6 +4,7 @@ import { ArrowLeft, Search, FileText } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { API_CONFIG } from '../../application/config/api_config';
+import { useGlobalFilter } from '../../application/contexts/GlobalFilterContext';
 import { Skeleton } from '../components/atoms/Skeleton';
 
 interface ProjectData {
@@ -16,26 +17,24 @@ interface ProjectData {
 }
 
 export default function ProjectsList() {
+  const { globalUniversityId, globalCareerId } = useGlobalFilter();
   const [projects, setProjects] = useState<ProjectData[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const isLoading = false;
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    const fetchProjects = async () => {
-      try {
-        // -# pedimos todos los proyectos sin limite
-        const res = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/recent-projects`);
+    if (!globalUniversityId || !globalCareerId) return;
+
+    const queryParams = `?university_id=${globalUniversityId}&career_id=${globalCareerId}`;
+
+    axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/recent-projects${queryParams}`)
+      .then(res => {
         if (Array.isArray(res.data)) {
           setProjects(res.data);
         }
-      } catch (error) {
-        console.error("Error fetching all projects:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchProjects();
-  }, []);
+      })
+      .catch(e => console.error("Error fetching projects", e));
+  }, [globalUniversityId, globalCareerId]);
 
   const filteredProjects = projects.filter(p => 
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 

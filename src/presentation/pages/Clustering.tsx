@@ -7,12 +7,14 @@ import { XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, BarChart, Bar, Cartes
 import { API_CONFIG } from '../../application/config/api_config';
 import { ToastNotification } from '../components/molecules/ToastNotification';
 import { Skeleton } from '../components/atoms/Skeleton';
+import { useGlobalFilter } from '../../application/contexts/GlobalFilterContext';
 
 export default function Clustering() {
   const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d');
   const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [isLoadingMaps, setIsLoadingMaps] = useState(true);
   const [projectCount, setProjectCount] = useState<number>(0);
+  const [pendingCount, setPendingCount] = useState<number>(0);
   const [dynamicBarData, setDynamicBarData] = useState<any[]>([]);
   const [recentProjects, setRecentProjects] = useState<any[]>([]);
   const [isExecuting, setIsExecuting] = useState(false);
@@ -24,10 +26,8 @@ export default function Clustering() {
   const [toastMsg, setToastMsg] = useState('');
   const [selectedTab, setSelectedTab] = useState<string>('global');
   const [driftMetrics, setDriftMetrics] = useState<any>(null);
-  const [universitiesList, setUniversitiesList] = useState<any[]>([]);
-  const [selectedUniversity, setSelectedUniversity] = useState<string>('');
-  const [selectedCareer, setSelectedCareer] = useState<string>('');
-  const [availableCareers, setAvailableCareers] = useState<any[]>([]);
+  const { globalUniversityId: selectedUniversity, globalCareerId: selectedCareer } = useGlobalFilter();
+  
 
   const fetchMaps = async (tab: string) => {
     import('../../application/cache/ClusteringCache').then(async ({ ClusteringCache }) => {
@@ -64,44 +64,13 @@ export default function Clustering() {
     axios.get(`${API_CONFIG.BASE_URL}/auth/universities/registered`)
       .then(res => {
         if (res.data && Array.isArray(res.data)) {
-          setUniversitiesList(res.data);
+          
         }
       })
       .catch(e => console.error("Error fetching universities", e));
   }, []);
 
-  useEffect(() => {
-    if (selectedUniversity) {
-      // Fetch careers for the selected university from auth-service
-      axios.get(`${API_CONFIG.BASE_URL}/auth/careers`, { params: { universityId: selectedUniversity } })
-        .then(res => {
-          if (res.data && Array.isArray(res.data)) {
-            setAvailableCareers(res.data);
-          } else {
-            setAvailableCareers([]);
-          }
-        })
-        .catch(e => {
-          console.error("Error fetching careers", e);
-          setAvailableCareers([]);
-        });
-    } else {
-      // Fetch all careers if no university is selected
-      axios.get(`${API_CONFIG.BASE_URL}/auth/careers`)
-        .then(res => {
-          if (res.data && Array.isArray(res.data)) {
-            setAvailableCareers(res.data);
-          } else {
-            setAvailableCareers([]);
-          }
-        })
-        .catch(e => {
-          console.error("Error fetching careers", e);
-          setAvailableCareers([]);
-        });
-    }
-    setSelectedCareer('');
-  }, [selectedUniversity]);
+  
 
   useEffect(() => {
     fetchMaps(selectedTab);
@@ -116,6 +85,15 @@ export default function Clustering() {
         const countRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/projects-count${queryParams}`);
         if (countRes.data && countRes.data.count !== undefined) {
           setProjectCount(countRes.data.count);
+        }
+
+        try {
+          const pendingRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/pending-projects-count`);
+          if (pendingRes.data && pendingRes.data.pending_count !== undefined) {
+            setPendingCount(pendingRes.data.pending_count);
+          }
+        } catch (e) {
+          console.warn('Pending projects not available');
         }
         
         try {
@@ -243,29 +221,6 @@ export default function Clustering() {
         <div>
           <h1 className="text-headline-lg font-bold text-on-surface">Clustering de Proyectos</h1>
           <p className="text-body-md text-on-surface-variant mt-2 max-w-2xl">Análisis semántico y agrupación automatizada de trabajos académicos para identificar sinergias y nuevas áreas de investigación.</p>
-          
-          <div className="flex gap-4 mt-6">
-            <select 
-              value={selectedUniversity} 
-              onChange={(e) => setSelectedUniversity(e.target.value)}
-              className="bg-surface-container-low border border-outline-variant text-on-surface rounded-lg px-4 py-2 font-label-md outline-none focus:border-primary max-w-[250px] truncate"
-            >
-              <option value="">Todas las Universidades</option>
-              {universitiesList.map(u => (
-                <option key={u.id} value={u.id}>{u.name}</option>
-              ))}
-            </select>
-            <select 
-              value={selectedCareer} 
-              onChange={(e) => setSelectedCareer(e.target.value)}
-              className="bg-surface-container-low border border-outline-variant text-on-surface rounded-lg px-4 py-2 font-label-md outline-none focus:border-primary max-w-[250px] truncate"
-            >
-              <option value="">Todas las Carreras</option>
-              {availableCareers.map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
-          </div>
         </div>
         <div className="flex flex-col items-end gap-2">
           <button 
@@ -299,6 +254,9 @@ export default function Clustering() {
                 </h2>
                 <span className="text-primary font-semibold text-label-md mb-2 flex items-center">
                   Total BD: {isLoadingStats ? <Skeleton variant="text" className="w-8 h-4 ml-2" /> : projectCount}
+                </span>
+                <span className="text-secondary font-semibold text-label-md mb-2 flex items-center">
+                  Sin Agrupar: {isLoadingStats ? <Skeleton variant="text" className="w-8 h-4 ml-2" /> : pendingCount}
                 </span>
               </div>
             </div>

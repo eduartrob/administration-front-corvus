@@ -23,6 +23,9 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<'engine' | 'appearance'>('engine');
   const [allowedExtensions, setAllowedExtensions] = useState<string[]>([]);
   const [llmProvider, setLlmProvider] = useState<'ollama' | 'groq'>('ollama');
+  const [groqModel, setGroqModel] = useState<string>('llama-3.1-8b-instant');
+  const [availableGroqModels, setAvailableGroqModels] = useState<any[]>([]);
+  const [isFetchingModels, setIsFetchingModels] = useState(false);
   const [driveFolders, setDriveFolders] = useState<any[]>([]);
   const [isFetchingFolders, setIsFetchingFolders] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -42,10 +45,25 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     }
   };
 
+  const fetchGroqModels = async () => {
+    setIsFetchingModels(true);
+    try {
+      const res = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/groq-models`);
+      if (res.data && res.data.status === 'success') {
+        setAvailableGroqModels(res.data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching groq models', error);
+    } finally {
+      setIsFetchingModels(false);
+    }
+  };
+
   useEffect(() => {
     if (isOpen) {
       fetchConfig();
       fetchDriveInvitations();
+      fetchGroqModels();
     }
   }, [isOpen]);
 
@@ -61,11 +79,13 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           setAllowedExtensions(validExts);
         }
         if (res.data.llm_provider) setLlmProvider(res.data.llm_provider);
+        if (res.data.groq_model) setGroqModel(res.data.groq_model);
       }
     } catch (error) {
       console.error('Error fetching config', error);
       setAllowedExtensions(['.pdf', '.md', '.txt']);
       setLlmProvider('ollama');
+      setGroqModel('llama-3.1-8b-instant');
     } finally {
       setIsLoading(false);
     }
@@ -77,7 +97,8 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     try {
       await axios.post(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/config`, {
         allowed_extensions: allowedExtensions,
-        llm_provider: llmProvider
+        llm_provider: llmProvider,
+        groq_model: groqModel
       });
       setMessage({ text: 'Configuración actualizada con éxito.', type: 'success' });
       setTimeout(() => setMessage(null), 3000);
@@ -170,7 +191,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full max-w-4xl h-[80vh] flex bg-surface rounded-2xl shadow-2xl overflow-hidden z-10"
+            className="relative w-full max-w-5xl h-[80vh] flex bg-surface rounded-2xl shadow-2xl overflow-hidden z-10"
           >
             {}
             <div className="w-64 bg-surface-container-lowest border-r border-outline-variant/50 flex flex-col p-4">
@@ -275,22 +296,56 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
                       <h4 className="text-body-lg font-bold text-on-surface mt-8 mb-2 border-t border-outline-variant/50 pt-6">Proveedor de Inteligencia Artificial</h4>
                       <p className="text-body-sm text-on-surface-variant mb-4">Selecciona el motor principal de IA. Groq ofrece inferencia ultra-rápida (&#60;3s), mientras Ollama garantiza 100% privacidad ejecutándose localmente (&#126;40s). Si Groq falla, el sistema usará Ollama automáticamente como respaldo (Failover).</p>
-                      
-                      <div className="flex gap-4">
-                        <button
-                          onClick={() => setLlmProvider('groq')}
-                          className={`relative flex-1 p-5 rounded-2xl border-2 transition-all overflow-hidden ${llmProvider === 'groq' ? 'bg-primary/10 border-primary shadow-sm' : 'bg-surface-container-low border-outline-variant/50 hover:bg-surface-container hover:border-outline-variant'}`}
-                        >
+                      <div className="flex gap-4 items-start">
+                        <div className="flex-1 flex flex-col gap-2">
+                          <button
+                            onClick={() => setLlmProvider('groq')}
+                            className={`relative w-full p-5 rounded-2xl border-2 transition-all overflow-hidden ${llmProvider === 'groq' ? 'bg-primary/10 border-primary shadow-sm' : 'bg-surface-container-low border-outline-variant/50 hover:bg-surface-container hover:border-outline-variant'}`}
+                          >
+                            {llmProvider === 'groq' && (
+                              <div className="absolute top-3 right-3 text-primary animate-in fade-in zoom-in duration-200">
+                                <CheckCircle className="w-5 h-5 fill-primary text-white" />
+                              </div>
+                            )}
+                            <div className={`text-left ${llmProvider === 'groq' ? 'text-primary font-bold' : 'text-on-surface'}`}>
+                              <h5 className="font-bold mb-1 text-lg">GroqCloud (Alta Velocidad)</h5>
+                              <p className="text-sm opacity-80 font-normal">API Rápida (LPU)</p>
+                            </div>
+                          </button>
+                          
                           {llmProvider === 'groq' && (
-                            <div className="absolute top-3 right-3 text-primary animate-in fade-in zoom-in duration-200">
-                              <CheckCircle className="w-5 h-5 fill-primary text-white" />
+                            <div className="animate-in slide-in-from-top-2 p-4 bg-surface-container-lowest border border-outline-variant/50 rounded-xl mt-2 relative">
+                              <label className="block text-label-md font-bold text-on-surface mb-2">Modelo Activo de Groq</label>
+                              <div className="relative">
+                                {isFetchingModels ? (
+                                  <div className="text-sm text-on-surface-variant flex items-center gap-2">
+                                    <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+                                    Cargando modelos...
+                                  </div>
+                                ) : (
+                                  <select 
+                                    value={groqModel}
+                                    onChange={(e) => setGroqModel(e.target.value)}
+                                    className="w-full bg-surface-container-low text-on-surface text-body-md rounded-lg p-2.5 border border-outline-variant/50 focus:border-primary outline-none focus:ring-1 focus:ring-primary appearance-none"
+                                  >
+                                    {availableGroqModels.length > 0 ? (
+                                      availableGroqModels.map(m => (
+                                        <option key={m.id} value={m.id}>{m.id} (Contexto: 8192)</option>
+                                      ))
+                                    ) : (
+                                      <option value="llama-3.1-8b-instant">llama-3.1-8b-instant</option>
+                                    )}
+                                  </select>
+                                )}
+                              </div>
+                              <div className="mt-4 p-3 bg-tertiary-container/20 border border-tertiary/30 rounded-lg">
+                                <p className="text-body-sm text-tertiary">
+                                  <strong>Monitorea tus límites exactos</strong> en la <a href="https://console.groq.com/settings/limits" target="_blank" rel="noopener noreferrer" className="underline font-bold hover:text-tertiary/80">consola oficial de GroqCloud</a>. Si se agota el límite, Corvus automáticamente rotará al siguiente modelo disponible (Fallback).
+                                </p>
+                              </div>
                             </div>
                           )}
-                          <div className={`text-left ${llmProvider === 'groq' ? 'text-primary font-bold' : 'text-on-surface'}`}>
-                            <h5 className="font-bold mb-1 text-lg">GroqCloud (Alta Velocidad)</h5>
-                            <p className="text-sm opacity-80 font-normal">Llama-3.3-70B vía LPU (Nube segura)</p>
-                          </div>
-                        </button>
+                        </div>
                         <button
                           onClick={() => setLlmProvider('ollama')}
                           className={`relative flex-1 p-5 rounded-2xl border-2 transition-all overflow-hidden ${llmProvider === 'ollama' ? 'bg-primary/10 border-primary shadow-sm' : 'bg-surface-container-low border-outline-variant/50 hover:bg-surface-container hover:border-outline-variant'}`}

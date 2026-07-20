@@ -4,9 +4,11 @@ import { Users, GraduationCap, AlertCircle, ArrowRight } from 'lucide-react';
 import axios from 'axios';
 import { API_CONFIG } from '../../application/config/api_config';
 import { Link } from 'react-router-dom';
+import { useGlobalFilter } from '../../application/contexts/GlobalFilterContext';
 import { Skeleton } from '../components/atoms/Skeleton';
 
-function formatRelativeTime(dateString: string) {
+// @ts-ignore
+export function formatRelativeTime(dateString: string) {
   const date = new Date(dateString);
   const now = new Date();
   const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
@@ -18,83 +20,42 @@ function formatRelativeTime(dateString: string) {
 }
 
 export default function Dashboard() {
-  const [stats, setStats] = useState({ students: 0, teachers: 0 });
+  const { globalUniversityId, globalCareerId } = useGlobalFilter();
+  const [stats, setStats] = useState([
+  { title: "Usuarios Totales", value: 0, icon: Users, change: "+12%", trend: "up" },
+  { title: "Alumnos Activos", value: 0, icon: GraduationCap, change: "+5%", trend: "up" },
+  { title: "Profesores", value: 0, icon: Users, change: "+2", trend: "neutral" }
+]);
   const [activities, setActivities] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingActivities, setIsLoadingActivities] = useState(true);
+  const isLoading = false;
+  const isLoadingActivities = false;
 
   useEffect(() => {
+    if (!globalUniversityId || !globalCareerId) return;
+
+    const queryParams = `?university_id=${globalUniversityId}&career_id=${globalCareerId}`;
+
     const fetchStats = async () => {
       try {
-        const response = await axios.get(`${API_CONFIG.BASE_URL}/auth/admin/stats/users`);
-        if (response.data && response.data.success) {
-          setStats({
-            students: response.data.students || 0,
-            teachers: response.data.teachers || 0
-          });
+        const statsRes = await axios.get(`${API_CONFIG.BASE_URL}/auth/admin/stats/users${queryParams}`);
+        setStats(prev => [
+          { ...prev[0], value: statsRes.data.total_users !== undefined ? statsRes.data.total_users : 0 },
+          { ...prev[1], value: statsRes.data.students !== undefined ? statsRes.data.students : 0 },
+          { ...prev[2], value: statsRes.data.teachers !== undefined ? statsRes.data.teachers : 0 }
+        ]);
+
+        const activityRes = await axios.get(`${API_CONFIG.BASE_URL}/auth/admin/activity?limit=5&university_id=${globalUniversityId}&career_id=${globalCareerId}`);
+        if (activityRes.data && Array.isArray(activityRes.data.items)) {
+          setActivities(activityRes.data.items);
+        } else {
+          setActivities([]);
         }
       } catch (error) {
         console.error('Error fetching dashboard stats:', error);
-        setStats({ students: 0, teachers: 0 });
-      } finally {
-        setIsLoading(false);
       }
     };
-
-    const fetchActivities = async () => {
-      try {
-        const res = await axios.get(`${API_CONFIG.BASE_URL}/auth/admin/activity?limit=5`);
-        if (res.data && res.data.success) {
-          const mapped = res.data.items.map((log: any) => {
-             let actionText = '';
-             let tag = '';
-             let tagClass = '';
-             let isAlert = false;
-             
-             if (log.action === 'LOGIN') {
-                actionText = 'inició sesión en la plataforma';
-                tag = 'Sistema';
-                tagClass = 'bg-surface-variant text-on-surface-variant';
-             } else if (log.action === 'UPLOAD_DOCUMENT') {
-                actionText = 'subió un documento';
-                tag = 'Documento';
-                tagClass = 'bg-primary-container/20 text-primary';
-             } else if (log.action === 'SYSTEM_ALERT') {
-                actionText = 'detectó una alerta de similitud alta';
-                tag = 'Automático';
-                tagClass = 'bg-error-container text-error';
-                isAlert = true;
-             } else {
-                actionText = 'realizó una acción';
-                tag = 'General';
-                tagClass = 'bg-surface-variant text-on-surface-variant';
-             }
-             
-             return {
-                id: log.id,
-                user: log.user?.full_name || 'Usuario desconocido',
-                role: log.user?.role?.name?.toLowerCase() || '',
-                action: actionText,
-                detail: log.detail,
-                time: formatRelativeTime(log.createdAt),
-                tag,
-                tagClass,
-                avatar: log.user?.profile_picture || `https://ui-avatars.com/api/?name=${log.user?.full_name || 'U'}&background=random`,
-                isAlert: isAlert || log.action === 'SYSTEM_ALERT'
-             };
-          });
-          setActivities(mapped);
-        }
-      } catch (error) {
-        console.error('Error fetching activities:', error);
-      } finally {
-        setIsLoadingActivities(false);
-      }
-    };
-
     fetchStats();
-    fetchActivities();
-  }, []);
+  }, [globalUniversityId, globalCareerId]);
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -123,7 +84,7 @@ export default function Dashboard() {
           <div>
             <p className="text-label-md text-on-surface-variant uppercase tracking-wider mb-1">TOTAL ALUMNOS REGISTRADOS</p>
             <h2 className="text-display-lg font-bold text-on-surface">
-              {isLoading ? <Skeleton variant="text" className="w-16 h-12" /> : stats.students.toLocaleString()}
+              {isLoading ? <Skeleton variant="text" className="w-16 h-12" /> : stats[1].value.toLocaleString()}
             </h2>
           </div>
         </div>
@@ -140,7 +101,7 @@ export default function Dashboard() {
           <div>
             <p className="text-label-md text-on-surface-variant uppercase tracking-wider mb-1">PROFESORES ACTIVOS</p>
             <h2 className="text-display-lg font-bold text-on-surface">
-              {isLoading ? <Skeleton variant="text" className="w-12 h-12" /> : stats.teachers.toLocaleString()}
+              {isLoading ? <Skeleton variant="text" className="w-12 h-12" /> : stats[2].value.toLocaleString()}
             </h2>
           </div>
         </div>
@@ -195,30 +156,29 @@ export default function Dashboard() {
           </div>
         ) : (
           <div className="divide-y divide-outline-variant/50">
-            {activities.map((item) => (
-              <div key={item.id} className="p-4 sm:p-5 flex items-center gap-4 hover:bg-surface-container-low/50 transition-colors">
-                <div className="flex-shrink-0 w-12 h-12 rounded-full overflow-hidden bg-surface-container-highest border border-outline-variant flex items-center justify-center">
-                  {item.isAlert ? (
-                    <AlertCircle className="w-6 h-6 text-error" />
-                  ) : (
-                    <img src={item.avatar} alt={item.user} className="w-full h-full object-cover" />
-                  )}
+            {activities.map((item) => {
+              const fullName = item.user?.full_name || item.user?.email || 'Usuario';
+              const roleName = item.user?.role?.name || '';
+              const avatar = item.user?.profile_picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=random`;
+              
+              return (
+                <div key={item.id} className="p-4 sm:p-5 flex items-center gap-4 hover:bg-surface-container-low/50 transition-colors">
+                  <div className="flex-shrink-0 w-12 h-12 rounded-full overflow-hidden bg-surface-container-highest border border-outline-variant flex items-center justify-center">
+                    <img src={avatar} alt={fullName} className="w-full h-full object-cover" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                  <p className="text-body-md text-on-surface truncate">
+                    {roleName ? `El ${roleName} ` : ''}
+                    <span className="font-semibold">{fullName}</span> {item.action}.
+                  </p>
+                  <p className="text-label-sm text-on-surface-variant truncate mt-0.5">{item.detail}</p>
                 </div>
-                <div className="flex-1 min-w-0">
-                <p className="text-body-md text-on-surface truncate">
-                  {item.role ? `El ${item.role} ` : ''}
-                  <span className="font-semibold">{item.user}</span> {item.action}.
-                </p>
-                <p className="text-label-sm text-on-surface-variant truncate mt-0.5">{item.detail}</p>
+                <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                  <span className="text-label-sm text-outline font-medium">{formatRelativeTime(item.createdAt)}</span>
+                </div>
               </div>
-              <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                <span className="text-label-sm text-outline font-medium">{item.time}</span>
-                <span className={`text-[12px] px-3 py-0.5 rounded-full font-medium ${item.tagClass}`}>
-                  {item.tag}
-                </span>
-              </div>
-            </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

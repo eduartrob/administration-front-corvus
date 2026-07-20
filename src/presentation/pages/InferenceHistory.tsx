@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { ClipboardList, RefreshCw, AlertTriangle, CheckCircle, Minus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ClipboardList, RefreshCw, AlertTriangle, CheckCircle, Minus, ChevronLeft, ChevronRight, Database } from 'lucide-react';
+import { useGlobalFilter } from '../../application/contexts/GlobalFilterContext';
 import axios from 'axios';
 import { API_CONFIG } from '../../application/config/api_config';
 
@@ -43,6 +44,7 @@ function formatDate(ts: number) {
 }
 
 export default function InferenceHistory() {
+  const { globalUniversityId, globalCareerId } = useGlobalFilter();
   const [data, setData]       = useState<HistoryResponse | null>(null);
   const [offset, setOffset]   = useState(0);
   const [loading, setLoading] = useState(true);
@@ -79,9 +81,23 @@ export default function InferenceHistory() {
   const totalPages  = data ? Math.ceil(data.total / LIMIT) : 0;
   const currentPage = Math.floor(offset / LIMIT) + 1;
 
+
+  if (!globalUniversityId || !globalCareerId) {
+    return (
+      <div className="p-8 h-full flex items-center justify-center">
+        <div className="bg-surface-container-low border border-outline-variant/50 rounded-2xl p-16 flex flex-col items-center justify-center text-center max-w-2xl">
+          <Database className="w-16 h-16 text-on-surface-variant mb-6 opacity-40" />
+          <h2 className="text-title-lg font-bold text-on-surface mb-2">Selecciona una Universidad y Carrera</h2>
+          <p className="text-body-lg text-on-surface-variant">
+            Para ver el historial de inferencias, primero debes seleccionar una universidad y su respectiva carrera en la barra superior.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
+    <motion.div initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
     >

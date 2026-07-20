@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, useAuth } from './application/contexts/AuthContext';
 import { ThemeProvider } from './application/contexts/ThemeContext';
 import { NotificationProvider } from './application/contexts/NotificationContext';
+import { GlobalFilterProvider } from './application/contexts/GlobalFilterContext';
 import { ProtectedRoute } from './presentation/components/templates/ProtectedRoute';
 import { MainLayout } from './presentation/components/templates/MainLayout';
 import Login from './presentation/pages/Login';
@@ -52,9 +53,11 @@ function App() {
     <ThemeProvider>
       <AuthProvider>
         <NotificationProvider>
-          <Router>
-            <AppRoutes />
-          </Router>
+          <GlobalFilterProvider>
+            <Router>
+              <AppRoutes />
+            </Router>
+          </GlobalFilterProvider>
         </NotificationProvider>
       </AuthProvider>
     </ThemeProvider>
