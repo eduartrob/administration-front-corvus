@@ -1,6 +1,7 @@
 
-import { Bell, HelpCircle, Search, CheckCircle2 } from 'lucide-react';
+import { Bell, HelpCircle, CheckCircle2 } from 'lucide-react';
 import { useNotifications } from '../../../application/contexts/NotificationContext';
+import { GlobalContextBar } from '../organisms/GlobalContextBar';
 
 import { useState, useRef, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
@@ -28,18 +29,9 @@ export function MainLayout() {
       <Sidebar onOpenSettings={() => setIsSettingsOpen(true)} />
       <div className="flex-1 flex flex-col">
         {}
-        <header className="h-20 bg-surface border-b border-outline-variant flex items-center justify-between px-8 sticky top-0 z-10">
-          <div className="flex-1 max-w-2xl">
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-5 w-5 text-outline" />
-              </div>
-              <input
-                type="text"
-                placeholder="Buscar proyectos, categorías..."
-                className="block w-full pl-10 pr-3 py-2.5 border-none rounded-xl bg-surface-container-low text-body-md placeholder-outline focus:ring-2 focus:ring-primary/50 transition-all"
-              />
-            </div>
+        <header className="h-20 bg-surface border-b border-outline-variant flex items-center justify-between px-8 sticky top-0 z-50">
+          <div className="flex-1 max-w-4xl">
+            <GlobalContextBar />
           </div>
           <div className="flex items-center gap-4 ml-4">
             <div className="relative" ref={dropdownRef}>

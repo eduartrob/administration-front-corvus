@@ -7,12 +7,14 @@ import { XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, BarChart, Bar, Cartes
 import { API_CONFIG } from '../../application/config/api_config';
 import { ToastNotification } from '../components/molecules/ToastNotification';
 import { Skeleton } from '../components/atoms/Skeleton';
+import { useGlobalFilter } from '../../application/contexts/GlobalFilterContext';
 
 export default function Clustering() {
   const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d');
   const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [isLoadingMaps, setIsLoadingMaps] = useState(true);
   const [projectCount, setProjectCount] = useState<number>(0);
+  const [pendingCount, setPendingCount] = useState<number>(0);
   const [dynamicBarData, setDynamicBarData] = useState<any[]>([]);
   const [recentProjects, setRecentProjects] = useState<any[]>([]);
   const [isExecuting, setIsExecuting] = useState(false);
@@ -24,17 +26,19 @@ export default function Clustering() {
   const [toastMsg, setToastMsg] = useState('');
   const [selectedTab, setSelectedTab] = useState<string>('global');
   const [driftMetrics, setDriftMetrics] = useState<any>(null);
+  const { globalUniversityId: selectedUniversity, globalCareerId: selectedCareer } = useGlobalFilter();
+  
 
   const fetchMaps = async (tab: string) => {
     import('../../application/cache/ClusteringCache').then(async ({ ClusteringCache }) => {
       // Check cache first
-      const cached = ClusteringCache.getMap(tab);
+      const cached = ClusteringCache.getMap(tab, selectedUniversity, selectedCareer);
       if (cached) {
         setHtml2d(cached.html2d);
         setHtml3d(cached.html3d);
         setIsLoadingMaps(false);
         // Optionally fetch in background to update cache without showing loader
-        ClusteringCache.prefetchMap(tab).then(newData => {
+        ClusteringCache.prefetchMap(tab, selectedUniversity, selectedCareer).then(newData => {
           if (newData) {
             setHtml2d(newData.html2d);
             setHtml3d(newData.html3d);
@@ -47,7 +51,7 @@ export default function Clustering() {
       setHtml2d('');
       setHtml3d('');
       
-      const data = await ClusteringCache.prefetchMap(tab);
+      const data = await ClusteringCache.prefetchMap(tab, selectedUniversity, selectedCareer);
       if (data) {
         setHtml2d(data.html2d);
         setHtml3d(data.html3d);
@@ -55,21 +59,45 @@ export default function Clustering() {
       setIsLoadingMaps(false);
     });
   };
+  useEffect(() => {
+    // Fetch all registered universities from auth-service
+    axios.get(`${API_CONFIG.BASE_URL}/auth/universities/registered`)
+      .then(res => {
+        if (res.data && Array.isArray(res.data)) {
+          
+        }
+      })
+      .catch(e => console.error("Error fetching universities", e));
+  }, []);
+
+  
 
   useEffect(() => {
     fetchMaps(selectedTab);
-  }, [selectedTab]);
-
+  }, [selectedTab, selectedUniversity, selectedCareer]);
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const countRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/projects-count`);
+        const uParam = selectedUniversity ? `?university_id=${selectedUniversity}` : '';
+        const cParam = selectedCareer ? (uParam ? `&career_id=${selectedCareer}` : `?career_id=${selectedCareer}`) : '';
+        const queryParams = uParam + cParam;
+
+        const countRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/projects-count${queryParams}`);
         if (countRes.data && countRes.data.count !== undefined) {
           setProjectCount(countRes.data.count);
         }
+
+        try {
+          const pendingRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/pending-projects-count`);
+          if (pendingRes.data && pendingRes.data.pending_count !== undefined) {
+            setPendingCount(pendingRes.data.pending_count);
+          }
+        } catch (e) {
+          console.warn('Pending projects not available');
+        }
         
         try {
-          const driftRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/drift-metrics`);
+          const driftRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/drift-metrics${queryParams}`);
           setDriftMetrics(driftRes.data);
         } catch (e) {
           console.warn('Drift metrics not available');
@@ -79,7 +107,9 @@ export default function Clustering() {
       }
 
       try {
-        const recentRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/recent-projects?limit=5`);
+        const uParam = selectedUniversity ? `&university_id=${selectedUniversity}` : '';
+        const cParam = selectedCareer ? `&career_id=${selectedCareer}` : '';
+        const recentRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/recent-projects?limit=5${uParam}${cParam}`);
         if (Array.isArray(recentRes.data)) {
           setRecentProjects(recentRes.data);
         }
@@ -88,7 +118,10 @@ export default function Clustering() {
       }
       
       try {
-        const statsRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/clusters-stats`);
+        const uParam = selectedUniversity ? `?university_id=${selectedUniversity}` : '';
+        const cParam = selectedCareer ? (uParam ? `&career_id=${selectedCareer}` : `?career_id=${selectedCareer}`) : '';
+        const queryParams = uParam + cParam;
+        const statsRes = await axios.get(`${API_CONFIG.BASE_URL}/clustering/integrator/admin/clusters-stats${queryParams}`);
         if (statsRes.data && statsRes.data.is_clustering_running !== undefined) {
            const wasExecuting = isExecutingRef.current;
            const isNowExecuting = statsRes.data.is_clustering_running;
@@ -168,7 +201,23 @@ export default function Clustering() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
     >
-      <div className="flex justify-between items-start mb-8">
+      {driftMetrics && driftMetrics.drift_rate_pct >= 15 && (
+        <div className="bg-error-container/80 border border-error/50 p-4 rounded-xl mb-6 flex items-center justify-between shadow-sm animate-pulse">
+          <div>
+            <h3 className="text-error font-bold text-title-md flex items-center gap-2">⚠️ Deriva de Ecosistema Detectada ({driftMetrics.drift_rate_pct}%)</h3>
+            <p className="text-on-error-container text-body-md">Se recomienda ejecutar el Clustering Global inmediatamente para re-balancear los mapas.</p>
+          </div>
+          <button 
+            onClick={executeClustering}
+            disabled={isExecuting}
+            className="px-6 py-2 bg-error text-white font-label-md rounded-lg hover:bg-error/90 shadow-md transition-colors"
+          >
+            {isExecuting ? 'Ejecutando...' : 'Re-ejecutar Clustering'}
+          </button>
+        </div>
+      )}
+
+      <div className="flex flex-col md:flex-row justify-between items-start mb-8 gap-4">
         <div>
           <h1 className="text-headline-lg font-bold text-on-surface">Clustering de Proyectos</h1>
           <p className="text-body-md text-on-surface-variant mt-2 max-w-2xl">Análisis semántico y agrupación automatizada de trabajos académicos para identificar sinergias y nuevas áreas de investigación.</p>
@@ -205,6 +254,9 @@ export default function Clustering() {
                 </h2>
                 <span className="text-primary font-semibold text-label-md mb-2 flex items-center">
                   Total BD: {isLoadingStats ? <Skeleton variant="text" className="w-8 h-4 ml-2" /> : projectCount}
+                </span>
+                <span className="text-secondary font-semibold text-label-md mb-2 flex items-center">
+                  Sin Agrupar: {isLoadingStats ? <Skeleton variant="text" className="w-8 h-4 ml-2" /> : pendingCount}
                 </span>
               </div>
             </div>

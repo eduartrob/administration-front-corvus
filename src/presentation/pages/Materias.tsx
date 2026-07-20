@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, ChevronDown, Edit2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, ChevronDown, Edit2, Trash2, ChevronLeft, ChevronRight, Database } from 'lucide-react';
+import { useGlobalFilter } from '../../application/contexts/GlobalFilterContext';
 import { Skeleton } from '../components/atoms/Skeleton';
 
 export default function Materias() {
+  const { globalUniversityId, globalCareerId } = useGlobalFilter();
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -11,6 +13,21 @@ export default function Materias() {
     const timer = setTimeout(() => setIsLoading(false), 1500);
     return () => clearTimeout(timer);
   }, []);
+
+
+  if (!globalUniversityId || !globalCareerId) {
+    return (
+      <div className="p-8 h-full flex items-center justify-center">
+        <div className="bg-surface-container-low border border-outline-variant/50 rounded-2xl p-16 flex flex-col items-center justify-center text-center max-w-2xl">
+          <Database className="w-16 h-16 text-on-surface-variant mb-6 opacity-40" />
+          <h2 className="text-title-lg font-bold text-on-surface mb-2">Selecciona una Universidad y Carrera</h2>
+          <p className="text-body-lg text-on-surface-variant">
+            Para gestionar las materias, primero debes seleccionar una universidad y su respectiva carrera en la barra superior.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <motion.div
